@@ -141,17 +141,19 @@ gh auth login
 - Assumes `origin` remote name.
 
 ## Roadmap
-- Output formats: `--format json`, `--format table`, `--format md`.
-- GraphQL batch query to reduce API calls.
-- Cache recent commit statuses (temp file TTL; invalidate on new HEAD).
-- Filtering: author, status, date range, grep on commit message.
-- Workflow names and URLs (opt-in with a flag).
-- Commit age column (e.g., `2h ago`).
 - Tests: bats + shellcheck CI workflow.
-- Rate-limit handling with backoff + user notice.
+- Cache recent commit statuses (temp file TTL; invalidate on new HEAD, store results keyed by branch head SHA).
 - Accessibility: `--no-emoji`, `--no-color` respecting `NO_COLOR`.
-- Performance metrics with `--debug` (timing per request).
+- Rate-limit handling with backoff + user notice.
+- Add a "watch" mode to monitor new commits live. It should poll periodically and update the display.
+- Commit age column (e.g., `2h ago`).
+- GraphQL batch query to reduce API calls: use a single GraphQL batch query to fetch all check suite statuses.
+- Implement the queued vs in_progress distinction next (would be a minor version bump)
+- Replace temp files with mkfifo or captured descriptors for even less I/O (micro-optimization).
+- Workflow names and URLs (opt-in with a flag).
+- Filtering: author, status, date range, grep on commit message.
 - Semantic versioning policy (documented in README).
+- Output formats: `--format json`, `--format table`, `--format md`.
 
 ## Contributing
 1. Fork and clone.
