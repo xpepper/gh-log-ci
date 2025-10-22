@@ -40,6 +40,8 @@ Branch resolution order when no argument is provided:
   --limit, -n <n>        Number of commits to display (default: 15; env LOG_CI_LIMIT)
   --concurrency, -c <n>  Parallel API calls (default: 4; env LOG_CI_CONCURRENCY)
   --checks, -C           Show per-check run summaries
+  --no-spinner           Disable loading spinner (env LOG_CI_NO_SPINNER=1)
+  --api-timeout <secs>   Max seconds per API request (default: 30; env LOG_CI_API_TIMEOUT)
   --help, -h          Show help / usage
   --version           Show version
 ```
@@ -57,6 +59,8 @@ Options:
   --limit, -n <n>        Number of commits to display (default: 15; env LOG_CI_LIMIT)
   --concurrency, -c <n>  Parallel API calls (default: 4; env LOG_CI_CONCURRENCY)
   --checks, -C           Show per-check run summaries
+  --no-spinner           Disable loading spinner (env LOG_CI_NO_SPINNER=1)
+  --api-timeout <secs>   Max seconds per API request (default: 30; env LOG_CI_API_TIMEOUT)
   --help, -h          Show this help text
   --version           Show version
 
@@ -83,6 +87,7 @@ $ gh log-ci
 | 🕓 | One or more check runs still in progress / queued and no failures yet |
 | 🚫 | One or more cancelled runs and no failures/pending (takes precedence over success) |
 | ⚠ | Mixed: successes and failures both present |
+| ⏲ | Timed out while fetching check runs (API didn't respond within --api-timeout) |
 | ➖ | Neutral/skipped/stale (shown only in per-check detail) |
 | ❔ | Fallback / unknown state |
 
@@ -95,6 +100,8 @@ $ gh log-ci
 | Parallel fetching | Concurrency-controlled API calls (`--concurrency`) |
 | Colorized log | Mirrors `git log` pretty format with colors |
 | Lightweight | Single Bash script, no external deps beyond `gh` |
+| Progress spinner | Shows animated spinner with live completed/total count (disable with --no-spinner) |
+| API timeouts | Per-request timeout preventing hangs (`--api-timeout`, shows ⏲ on timeout) |
 
 ## Permissions
 
@@ -127,6 +134,8 @@ gh auth login
 - Commit count: `--limit` / `-n` (default 15) or environment `LOG_CI_LIMIT`.
 - Concurrency: `--concurrency` / `-c` (default 4) or environment `LOG_CI_CONCURRENCY`.
 - Per-check detail: `--checks` / `-C` or environment `LOG_CI_SHOW_CHECKS=1`.
+- Spinner: disable with `--no-spinner` or `LOG_CI_NO_SPINNER=1`.
+- API request timeout: `--api-timeout <secs>` (default 30) or `LOG_CI_API_TIMEOUT`.
 
 ## Limitations
 - One REST API call per commit (future: GraphQL batch).
@@ -189,3 +198,17 @@ See `LICENSE`.
 
 ## Disclaimer
 Early MVP; expect changes as features mature.
+
+## Changelog
+
+| Version | Date | Notes |
+|---------|------|-------|
+| 0.3.6 | 2025-10-22 | Progress-aware spinner (shows completed/total); robust concurrency queue; per-request `--api-timeout` with ⏲ icon on timeout |
+| 0.3.5 | 2025-10-22 | Initial spinner + timeout flag added |
+| 0.3.4 | 2025-10-22 | Loading spinner (`--no-spinner`) option |
+| 0.3.3 | 2025-10-22 | Removed header banner from output for compact display |
+| 0.3.2 | 2025-10-22 | Cancelled status precedence fix (show 🚫 when any cancelled and no failures) |
+| 0.3.1 | 2025-10-22 | Added tests (bats) & CI workflow (shellcheck + tests) |
+| 0.3.0 | 2025-10-22 | Per-check summaries (`--checks`) and richer status aggregation |
+| 0.2.0 | 2025-10-22 | Concurrency flag (`--concurrency`) parallel API calls |
+| 0.1.0 | 2025-10-22 | Basic functionality with branch auto-detect & limit |

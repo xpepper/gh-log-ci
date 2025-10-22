@@ -3,7 +3,7 @@
 set -euo pipefail
 
 PROGRAM="gh log-ci"
-VERSION="0.3.3"
+VERSION="0.3.4"
 
 show_help() {
   cat <<'EOF'
@@ -17,6 +17,8 @@ Options:
   --limit, -n <n>        Number of commits to display (default: 15; env LOG_CI_LIMIT overrides)
   --concurrency, -c <n>  Max parallel API calls (default: 4; env LOG_CI_CONCURRENCY overrides)
   --checks, -C           Show per-check run summaries beneath each commit (env LOG_CI_SHOW_CHECKS=1)
+  --no-spinner           Disable loading spinner (env LOG_CI_NO_SPINNER=1)
+  --api-timeout <secs>   Max seconds per API request (default: 30; env LOG_CI_API_TIMEOUT)
   --help, -h             Show this help text
   --version              Show version
 
@@ -46,6 +48,8 @@ USER_BRANCH=""
 LIMIT="${LOG_CI_LIMIT:-15}"
 CONCURRENCY="${LOG_CI_CONCURRENCY:-4}"
 SHOW_CHECKS="${LOG_CI_SHOW_CHECKS:-0}"
+NO_SPINNER="${LOG_CI_NO_SPINNER:-0}"
+API_TIMEOUT="${LOG_CI_API_TIMEOUT:-30}"
 
 # Parse flags
 POS_ARGS=()
@@ -62,6 +66,12 @@ while [[ $# -gt 0 ]]; do
       ;;
     --checks|-C)
       SHOW_CHECKS=1
+      ;;
+    --no-spinner)
+      NO_SPINNER=1
+      ;;
+    --api-timeout)
+      API_TIMEOUT="${2:-}"; shift || true
       ;;
     -h|--help)
       show_help; exit 0
@@ -96,6 +106,10 @@ if ! [[ "$LIMIT" =~ ^[0-9]+$ ]] || [[ "$LIMIT" -le 0 ]]; then
 fi
 if ! [[ "$CONCURRENCY" =~ ^[0-9]+$ ]] || [[ "$CONCURRENCY" -le 0 ]]; then
   echo "Error: --concurrency must be a positive integer (got '$CONCURRENCY')." >&2
+  exit 1
+fi
+if ! [[ "$API_TIMEOUT" =~ ^[0-9]+$ ]] || [[ "$API_TIMEOUT" -le 0 ]]; then
+  echo "Error: --api-timeout must be a positive integer (got '$API_TIMEOUT')." >&2
   exit 1
 fi
 
@@ -156,17 +170,64 @@ done < <(git log "origin/$BRANCH" --color=always --pretty="$FORMAT" -n "$LIMIT")
 
 TOTAL=$INDEX
 TMPDIR=$(mktemp -d 2>/dev/null || mktemp -d -t ghlogci)
-job_count=0
+
+# Spinner function
+spinner() {
+  local frames=('⠋' '⠙' '⠹' '⠸' '⠼' '⠴' '⠦' '⠧' '⠇' '⠏')
+  local i=0
+  while :; do
+    if [[ -f "$TMPDIR/.done" ]]; then
+      COMPLETED=$(wc -l < "$TMPDIR/.done" 2>/dev/null || echo 0)
+    else
+      COMPLETED=0
+    fi
+    printf "\r%s Fetching CI statuses... %d/%d" "${frames[$i]}" "$COMPLETED" "$TOTAL"
+    i=$(((i+1)%${#frames[@]}))
+    sleep 0.1
+  done
+}
+
+trap '[[ -n "${SPINNER_PID:-}" ]] && kill "$SPINNER_PID" 2>/dev/null || true' EXIT INT TERM
+
+if [[ "$NO_SPINNER" -ne 1 ]]; then
+  spinner &
+  SPINNER_PID=$!
+fi
+
+run_with_timeout() {
+  local _timeout="$1"; shift
+  local _tmp_out
+  _tmp_out="$(mktemp -t ghlogci_cmd.XXXX)"
+  ("$@" > "$_tmp_out" 2>&1) &
+  local _pid=$!
+  local _elapsed=0
+  while kill -0 "$_pid" 2>/dev/null; do
+    if [[ $_elapsed -ge $_timeout ]]; then
+      kill "$_pid" 2>/dev/null || true
+      wait "$_pid" 2>/dev/null || true
+      echo "__TIMEOUT__" > "$_tmp_out"
+      break
+    fi
+    sleep 1
+    _elapsed=$((_elapsed+1))
+  done
+  wait "$_pid" 2>/dev/null || true
+  cat "$_tmp_out"
+  rm -f "$_tmp_out" 2>/dev/null || true
+}
+
+# Concurrency control using PID queue (portable, avoids wait -n)
+pids=()
 for i in $(seq 0 $((TOTAL-1))); do
   SHA="${SHA_MAP[$i]}"
   (
     # Fetch check runs with name, status, conclusion via gh built-in jq
     # status: queued|in_progress|completed
     # conclusion may be null until completed.
-    RAW_LINES=$(gh api "/repos/$OWNER/$REPO/commits/$SHA/check-runs" --jq '.check_runs[] | [.name, (.status // ""), (.conclusion // "" )] | @tsv' 2>/dev/null || true)
+  RAW_LINES=$(run_with_timeout "$API_TIMEOUT" gh api "/repos/$OWNER/$REPO/commits/$SHA/check-runs" --jq '.check_runs[] | [.name, (.status // ""), (.conclusion // "" )] | @tsv' 2>/dev/null || true)
     success_count=0; fail_count=0; cancel_count=0; pending_count=0; other_count=0; total_count=0
     DETAIL_OUTPUT=""
-    if [[ -n "$RAW_LINES" ]]; then
+    if [[ -n "$RAW_LINES" && "$RAW_LINES" != "__TIMEOUT__" ]]; then
       while IFS=$'\t' read -r NAME STATUS CONCLUSION; do
         total_count=$((total_count+1))
         ICON_RUN=""
@@ -195,6 +256,9 @@ for i in $(seq 0 $((TOTAL-1))); do
 
     # Overall icon aggregation precedence (fail > pending > cancelled > mixed success+fail > success)
     OVERALL_ICON="❔"
+    if [[ "$RAW_LINES" == "__TIMEOUT__" ]]; then
+      OVERALL_ICON="⏲" # timeout indicator
+    fi
     if [[ $fail_count -gt 0 ]]; then
       OVERALL_ICON="❌"
     elif [[ $pending_count -gt 0 ]]; then
@@ -212,14 +276,28 @@ for i in $(seq 0 $((TOTAL-1))); do
         printf "%b" "$DETAIL_OUTPUT"
       fi
     } > "$TMPDIR/$i"
+    # Mark completion (append a line)
+    echo 1 >> "$TMPDIR/.done"
   ) &
-  job_count=$((job_count+1))
-  if [[ $job_count -ge $CONCURRENCY ]]; then
-    wait -n || wait
-    job_count=$((job_count-1))
+  pids+=($!)
+  if [[ ${#pids[@]} -ge $CONCURRENCY ]]; then
+    # Wait for first PID in queue
+    wait "${pids[0]}" 2>/dev/null || true
+    # Remove first element
+    pids=(${pids[@]:1})
   fi
 done
-wait
+for pid in "${pids[@]}"; do
+  wait "$pid" 2>/dev/null || true
+done
+
+COMPLETED=$TOTAL # ensure spinner shows full count before killing
+
+if [[ -n "${SPINNER_PID:-}" && "$NO_SPINNER" -ne 1 ]]; then
+  kill "$SPINNER_PID" 2>/dev/null || true
+  wait "$SPINNER_PID" 2>/dev/null || true
+  printf "\r%-60s\r" ""  # clear spinner line
+fi
 
 for i in $(seq 0 $((TOTAL-1))); do
   cat "$TMPDIR/$i" 2>/dev/null || echo "❔  ${LINE_MAP[$i]}"
