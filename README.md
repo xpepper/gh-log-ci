@@ -42,6 +42,8 @@ Branch resolution order when no argument is provided:
   --checks, -C           Show per-check run summaries
   --no-spinner           Disable loading spinner (env LOG_CI_NO_SPINNER=1)
   --api-timeout <secs>   Max seconds per API request (default: 30; env LOG_CI_API_TIMEOUT)
+  --watch                Continuously poll and update commit statuses
+  --watch-interval <s>   Seconds between polls in watch mode (default: 10; env LOG_CI_WATCH_INTERVAL)
   --help, -h          Show help / usage
   --version           Show version
 ```
@@ -102,6 +104,7 @@ $ gh log-ci
 | Lightweight | Single Bash script, no external deps beyond `gh` |
 | Progress spinner | Shows animated spinner with live completed/total count (disable with --no-spinner) |
 | API timeouts | Per-request timeout preventing hangs (`--api-timeout`, shows ⏲ on timeout) |
+| Watch mode | Continuously polls to surface new commits and evolving statuses (`--watch`, `--watch-interval`) |
 
 ## Permissions
 
@@ -136,6 +139,7 @@ gh auth login
 - Per-check detail: `--checks` / `-C` or environment `LOG_CI_SHOW_CHECKS=1`.
 - Spinner: disable with `--no-spinner` or `LOG_CI_NO_SPINNER=1`.
 - API request timeout: `--api-timeout <secs>` (default 30) or `LOG_CI_API_TIMEOUT`.
+- Watch mode: `--watch` continuously refresh; `--watch-interval <s>` (default 10) or `LOG_CI_WATCH_INTERVAL`.
 
 ## Limitations
 - One REST API call per commit (future: GraphQL batch).
@@ -145,7 +149,6 @@ gh auth login
 - Assumes `origin` remote name.
 
 ## Roadmap
-- Add a "watch" mode to monitor new commits live. It should poll periodically and update the display.
 - Cache recent commit statuses (temp file TTL; invalidate on new HEAD, store results keyed by branch head SHA).
 - Accessibility: `--no-emoji`, `--no-color` respecting `NO_COLOR`.
 - Rate-limit handling with backoff + user notice.
@@ -203,6 +206,7 @@ Early MVP; expect changes as features mature.
 
 | Version | Date | Notes |
 |---------|------|-------|
+| 0.4.0 | 2025-10-22 | Watch mode (`--watch`, `--watch-interval`); refactored core for repeated polling |
 | 0.3.4 | 2025-10-22 | Progress-aware spinner (`--no-spinner`) option (shows completed/total); per-request `--api-timeout` with ⏲ icon on timeout |
 | 0.3.3 | 2025-10-22 | Removed header banner from output for compact display |
 | 0.3.2 | 2025-10-22 | Cancelled status precedence fix (show 🚫 when any cancelled and no failures) |
