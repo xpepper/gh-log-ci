@@ -141,7 +141,6 @@ gh auth login
 - Assumes `origin` remote name.
 
 ## Roadmap
-- Tests: bats + shellcheck CI workflow.
 - Cache recent commit statuses (temp file TTL; invalidate on new HEAD, store results keyed by branch head SHA).
 - Accessibility: `--no-emoji`, `--no-color` respecting `NO_COLOR`.
 - Rate-limit handling with backoff + user notice.
@@ -154,6 +153,21 @@ gh auth login
 - Filtering: author, status, date range, grep on commit message.
 - Semantic versioning policy (documented in README).
 - Output formats: `--format json`, `--format table`, `--format md`.
+
+## Testing
+We use [bats](https://github.com/bats-core/bats-core) for basic behavioral tests and [shellcheck](https://www.shellcheck.net/) for static analysis.
+
+Run locally:
+```bash
+shellcheck gh-log-ci
+bats tests
+```
+CI runs automatically on pushes / PRs (see `.github/workflows/ci.yml`). A badge can be added once the repository is public.
+
+Convenience local CI script (runs both):
+```bash
+./ci-local.sh
+```
 
 ## Contributing
 1. Fork and clone.

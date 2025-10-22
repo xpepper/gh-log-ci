@@ -1,0 +1,27 @@
+name: CI
+
+on:
+  push:
+    branches: [master, main]
+  pull_request:
+
+jobs:
+  lint-and-test:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Set up bash tools
+        run: sudo apt-get update && sudo apt-get install -y bats shellcheck
+
+      - name: Shellcheck
+        run: shellcheck gh-log-ci
+
+      - name: Bats tests
+        run: bats tests
+
+      - name: Summary
+        if: always()
+        run: |
+          echo "Shellcheck and bats completed." >> $GITHUB_STEP_SUMMARY
