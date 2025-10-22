@@ -14,10 +14,9 @@
 1. Install [GitHub CLI](https://cli.github.com/)
 2. Authenticate: `gh auth login`
 3. (Optional) Ensure you have access to private repos you care about
-4. Clone a repository: `git clone https://github.com/OWNER/REPO && cd REPO`
-5. Install the extension: `gh extension install xpepper/gh-log-ci` (or `gh extension install .` from local checkout)
-6. Run: `gh log-ci`
-7. Profit! ✅ 🚀
+4. Install the extension: `gh extension install xpepper/gh-log-ci` (or `gh extension install .` from local checkout)
+5. Run: `gh log-ci` on a GitHub repo
+6. Profit! ✅ 🚀
 
 ## Usage
 
