@@ -1,4 +1,9 @@
-# gh-log-ci
+<p align="center">
+  <img src="assets/gh-log-ci-banner.png" alt="gh-log-ci logo and example output" width="340">
+</p>
+
+<h1 align="center">gh-log-ci</h1>
+<p align="center"><em>A GitHub CLI extension that shows CI status next to commit logs</em></p>
 
 `gh-log-ci` is a GitHub CLI extension that augments the regular `git log` / `gh` experience by showing the Continuous Integration (CI) status for recent commits of a repository side-by-side with commit metadata. This helps developers quickly assess whether a given commit is "green" (safe to release) or has failing / pending checks.
 
