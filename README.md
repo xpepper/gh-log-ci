@@ -36,9 +36,10 @@ Branch resolution order when no argument is provided:
 
 ### Flags
 ```
-  --branch <name>     Use a specific branch (overrides auto-detect)
-  --limit, -n <n>     Number of commits to display (default: 15; env LOG_CI_LIMIT)
+  --branch <name>        Use a specific branch (overrides auto-detect)
+  --limit, -n <n>        Number of commits to display (default: 15; env LOG_CI_LIMIT)
   --concurrency, -c <n>  Parallel API calls (default: 4; env LOG_CI_CONCURRENCY)
+  --checks, -C           Show per-check run summaries
   --help, -h          Show help / usage
   --version           Show version
 ```
@@ -52,9 +53,10 @@ Usage:
   gh log-ci [options] [<branch>]
 
 Options:
-  --branch <name>       Branch to inspect (alternative to positional <branch>)
-  --limit, -n <n>       Number of commits to display (default: 15; env LOG_CI_LIMIT)
-  --concurrency, -c <n> Parallel API calls (default: 4; env LOG_CI_CONCURRENCY)
+  --branch <name>        Branch to inspect (alternative to positional <branch>)
+  --limit, -n <n>        Number of commits to display (default: 15; env LOG_CI_LIMIT)
+  --concurrency, -c <n>  Parallel API calls (default: 4; env LOG_CI_CONCURRENCY)
+  --checks, -C           Show per-check run summaries
   --help, -h          Show this help text
   --version           Show version
 
@@ -81,17 +83,21 @@ Commit status for my-org/my-repo (master):
 ## Icons Legend
 | Icon | Meaning |
 |------|---------|
-| ✅ | At least one check run succeeded and no failures detected |
-| ❌ | One or more check runs concluded with failure / timed_out / action_required |
-| 🚫 | All check runs were cancelled |
-| 🕓 | No check runs yet / still in progress / unknown state |
-| ❔ | Fallback when state can't be determined |
+| ✅ | All completed check runs succeeded (no failures/pending) |
+| ❌ | At least one failing/timed_out/action_required check run |
+| 🕓 | One or more check runs still in progress / queued and no failures yet |
+| 🚫 | All check runs cancelled (and none succeeded) |
+| ⚠ | Mixed: successes and failures both present |
+| ➖ | Neutral/skipped/stale (shown only in per-check detail) |
+| ❔ | Fallback / unknown state |
 
 ## Features
 | Capability | Description |
 |------------|-------------|
 | Auto branch | Detects default branch, falls back to master/main/HEAD |
-| Status summary | Aggregates check run conclusions into a single icon |
+| Status aggregation | Smarter overall icon (pending vs all-green vs mixed failure) |
+| Per-check summaries | Optional detailed list via `--checks` / `LOG_CI_SHOW_CHECKS=1` |
+| Parallel fetching | Concurrency-controlled API calls (`--concurrency`) |
 | Colorized log | Mirrors `git log` pretty format with colors |
 | Lightweight | Single Bash script, no external deps beyond `gh` |
 
@@ -125,17 +131,17 @@ gh auth login
 - Branch: positional argument or `--branch` (auto-detected if omitted).
 - Commit count: `--limit` / `-n` (default 15) or environment `LOG_CI_LIMIT`.
 - Concurrency: `--concurrency` / `-c` (default 4) or environment `LOG_CI_CONCURRENCY`.
+- Per-check detail: `--checks` / `-C` or environment `LOG_CI_SHOW_CHECKS=1`.
 
 ## Limitations
-- One API call per commit (performance impact on larger limits).
-- Any failure marks commit ❌ even if other checks succeed.
-- Pending vs in_progress conflated (🕓).
+- One REST API call per commit (future: GraphQL batch).
+- Per-check summaries increase output size (consider piping/grep).
+- Neutral/skipped/stale checks don't affect overall icon yet.
 - No JSON / alternative formats yet.
 - Assumes `origin` remote name.
 
 ## Roadmap
 - Output formats: `--format json`, `--format table`, `--format md`.
-- More precise status aggregation (require all checks success for ✅, mixed state icon, per-check summaries).
 - GraphQL batch query to reduce API calls.
 - Cache recent commit statuses (temp file TTL; invalidate on new HEAD).
 - Filtering: author, status, date range, grep on commit message.
@@ -145,7 +151,7 @@ gh auth login
 - Rate-limit handling with backoff + user notice.
 - Accessibility: `--no-emoji`, `--no-color` respecting `NO_COLOR`.
 - Performance metrics with `--debug` (timing per request).
-- Semantic versioning documented (bump minor for features, patch for fixes).
+- Semantic versioning policy (documented in README).
 
 ## Contributing
 1. Fork and clone.

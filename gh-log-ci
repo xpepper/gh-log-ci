@@ -3,7 +3,7 @@
 set -euo pipefail
 
 PROGRAM="gh log-ci"
-VERSION="0.2.0"
+VERSION="0.3.0"
 
 show_help() {
   cat <<'EOF'
@@ -13,11 +13,12 @@ Usage:
   gh log-ci [options] [<branch>]
 
 Options:
-  --branch <name>     Branch to inspect (alternative to positional <branch>)
-  --limit, -n <n>     Number of commits to display (default: 15; env LOG_CI_LIMIT overrides)
+  --branch <name>        Branch to inspect (alternative to positional <branch>)
+  --limit, -n <n>        Number of commits to display (default: 15; env LOG_CI_LIMIT overrides)
   --concurrency, -c <n>  Max parallel API calls (default: 4; env LOG_CI_CONCURRENCY overrides)
-  --help, -h          Show this help text
-  --version           Show version
+  --checks, -C           Show per-check run summaries beneath each commit (env LOG_CI_SHOW_CHECKS=1)
+  --help, -h             Show this help text
+  --version              Show version
 
 Branch auto-detect order when <branch> not supplied:
   1. GitHub default branch (via gh repo view)
@@ -26,10 +27,12 @@ Branch auto-detect order when <branch> not supplied:
   4. current HEAD branch
 
 Examples:
-  gh log-ci                            # auto-detect branch
-  gh log-ci main                       # explicit positional branch
+  gh log-ci                                  # auto-detect branch
+  gh log-ci main                             # explicit positional branch
   gh log-ci --branch develop --limit 30
-  gh log-ci -c 8 -n 50                 # increase parallelism and number of commits
+  gh log-ci -c 8 -n 50                       # increase parallelism and number of commits
+  LOG_CI_SHOW_CHECKS=1 gh log-ci -n 10       # show per-check summaries (env)
+  gh log-ci -C --limit 5                     # show per-check summaries (flag)
 
 Exit codes:
   0 success
@@ -42,6 +45,7 @@ EOF
 USER_BRANCH=""
 LIMIT="${LOG_CI_LIMIT:-15}"
 CONCURRENCY="${LOG_CI_CONCURRENCY:-4}"
+SHOW_CHECKS="${LOG_CI_SHOW_CHECKS:-0}"
 
 # Parse flags
 POS_ARGS=()
@@ -55,6 +59,9 @@ while [[ $# -gt 0 ]]; do
       ;;
     --concurrency|-c)
       CONCURRENCY="${2:-}"; shift || true
+      ;;
+    --checks|-C)
+      SHOW_CHECKS=1
       ;;
     -h|--help)
       show_help; exit 0
@@ -159,20 +166,59 @@ job_count=0
 for i in $(seq 0 $((TOTAL-1))); do
   SHA="${SHA_MAP[$i]}"
   (
-    CHECK_CONCLUSIONS=$(gh api "/repos/$OWNER/$REPO/commits/$SHA/check-runs" --jq '.check_runs[].conclusion' 2>/dev/null || true)
-    ICON="❔"
-    if [[ -z "$CHECK_CONCLUSIONS" ]]; then
-      ICON="🕓"
-    elif echo "$CHECK_CONCLUSIONS" | grep -qE 'failure|timed_out|action_required'; then
-      ICON="❌"
-    elif echo "$CHECK_CONCLUSIONS" | grep -q 'cancelled'; then
-      ICON="🚫"
-    elif echo "$CHECK_CONCLUSIONS" | grep -q 'success'; then
-      ICON="✅"
-    else
-      ICON="🕓"
+    # Fetch check runs with name, status, conclusion via gh built-in jq
+    # status: queued|in_progress|completed
+    # conclusion may be null until completed.
+    RAW_LINES=$(gh api "/repos/$OWNER/$REPO/commits/$SHA/check-runs" --jq '.check_runs[] | [.name, (.status // ""), (.conclusion // "" )] | @tsv' 2>/dev/null || true)
+    success_count=0; fail_count=0; cancel_count=0; pending_count=0; other_count=0; total_count=0
+    DETAIL_OUTPUT=""
+    if [[ -n "$RAW_LINES" ]]; then
+      while IFS=$'\t' read -r NAME STATUS CONCLUSION; do
+        total_count=$((total_count+1))
+        ICON_RUN=""
+        # Determine per-check icon
+        if [[ -z "$CONCLUSION" && "$STATUS" != "completed" ]]; then
+          ICON_RUN="🕓"; pending_count=$((pending_count+1))
+        elif [[ "$CONCLUSION" == "success" ]]; then
+          ICON_RUN="✅"; success_count=$((success_count+1))
+        elif [[ "$CONCLUSION" =~ ^(failure|timed_out|action_required)$ ]]; then
+          ICON_RUN="❌"; fail_count=$((fail_count+1))
+        elif [[ "$CONCLUSION" == "cancelled" ]]; then
+          ICON_RUN="🚫"; cancel_count=$((cancel_count+1))
+        elif [[ "$CONCLUSION" =~ ^(neutral|skipped|stale)$ ]]; then
+          ICON_RUN="➖"; other_count=$((other_count+1))
+        else
+          ICON_RUN="❔"; other_count=$((other_count+1))
+        fi
+        if [[ "$SHOW_CHECKS" == "1" ]]; then
+          # Trim overly long names
+          SHORT_NAME="$NAME"
+          [[ ${#SHORT_NAME} -gt 40 ]] && SHORT_NAME="${SHORT_NAME:0:37}..."
+          DETAIL_OUTPUT+="    • $ICON_RUN $SHORT_NAME ($STATUS${CONCLUSION:+/$CONCLUSION})\n"
+        fi
+      done <<<"$RAW_LINES"
     fi
-    echo "$ICON" > "$TMPDIR/$i"
+
+    # Overall icon aggregation precedence
+    OVERALL_ICON="❔"
+    if [[ $fail_count -gt 0 ]]; then
+      OVERALL_ICON="❌"
+    elif [[ $pending_count -gt 0 && $fail_count -eq 0 ]]; then
+      OVERALL_ICON="🕓"
+    elif [[ $cancel_count -gt 0 && $success_count -eq 0 && $fail_count -eq 0 && $pending_count -eq 0 ]]; then
+      OVERALL_ICON="🚫"
+    elif [[ $success_count -gt 0 && $fail_count -eq 0 && $pending_count -eq 0 ]]; then
+      OVERALL_ICON="✅"
+    elif [[ $success_count -gt 0 && $fail_count -gt 0 ]]; then
+      OVERALL_ICON="⚠"  # mixed
+    fi
+
+    {
+      echo "$OVERALL_ICON  ${LINE_MAP[$i]}"
+      if [[ "$SHOW_CHECKS" == "1" && -n "$DETAIL_OUTPUT" ]]; then
+        printf "%b" "$DETAIL_OUTPUT"
+      fi
+    } > "$TMPDIR/$i"
   ) &
   job_count=$((job_count+1))
   if [[ $job_count -ge $CONCURRENCY ]]; then
@@ -183,8 +229,7 @@ done
 wait
 
 for i in $(seq 0 $((TOTAL-1))); do
-  ICON="$(cat "$TMPDIR/$i" 2>/dev/null || echo '❔')"
-  echo "$ICON  ${LINE_MAP[$i]}"
+  cat "$TMPDIR/$i" 2>/dev/null || echo "❔  ${LINE_MAP[$i]}"
 done
 rm -rf "$TMPDIR" 2>/dev/null || true
 
