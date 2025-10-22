@@ -2,25 +2,99 @@
 
 set -euo pipefail
 
-# Determine branch:
-# 1. If user passed an argument, use it.
-# 2. Else attempt to get default branch via gh repo view.
-# 3. Fallback order: detected default -> master -> main -> current HEAD branch.
-if [[ $# -ge 1 ]]; then
-  BRANCH="$1"
+PROGRAM="gh log-ci"
+VERSION="0.1.0"
+
+show_help() {
+  cat <<'EOF'
+gh log-ci - show CI status next to recent commits
+
+Usage:
+  gh log-ci [options] [<branch>]
+
+Options:
+  --branch <name>   Branch to inspect (alternative to positional <branch>)
+  --limit <n>       Number of commits to display (default: 15)
+  --help, -h        Show this help text
+  --version         Show version
+
+Branch auto-detect order when <branch> not supplied:
+  1. GitHub default branch (via gh repo view)
+  2. master (if exists)
+  3. main (if exists)
+  4. current HEAD branch
+
+Examples:
+  gh log-ci                # auto-detect branch
+  gh log-ci main           # explicit positional branch
+  gh log-ci --branch develop --limit 30
+
+Exit codes:
+  0 success
+  1 setup or API error
+
+EOF
+}
+
+# Default values
+USER_BRANCH=""
+LIMIT=15
+
+# Parse flags
+POS_ARGS=()
+while [[ $# -gt 0 ]]; do
+  case "$1" in
+    --branch)
+      USER_BRANCH="${2:-}"; shift || true
+      ;;
+    --limit)
+      LIMIT="${2:-}"; shift || true
+      ;;
+    -h|--help)
+      show_help; exit 0
+      ;;
+    --version)
+      echo "$PROGRAM $VERSION"; exit 0
+      ;;
+    --) # end of flags
+      shift; break
+      ;;
+    -*)
+      echo "Unknown option: $1" >&2
+      echo "Run with --help for usage." >&2
+      exit 1
+      ;;
+    *)
+      POS_ARGS+=("$1")
+      ;;
+  esac
+  shift || true
+done
+
+# If positional branch provided and no --branch flag, use it.
+if [[ -z "$USER_BRANCH" && ${#POS_ARGS[@]} -ge 1 ]]; then
+  USER_BRANCH="${POS_ARGS[0]}"
+fi
+
+# Validate LIMIT is an integer >0
+if ! [[ "$LIMIT" =~ ^[0-9]+$ ]] || [[ "$LIMIT" -le 0 ]]; then
+  echo "Error: --limit must be a positive integer (got '$LIMIT')." >&2
+  exit 1
+fi
+
+# Determine branch (BRANCH variable) using auto-detect if USER_BRANCH empty
+if [[ -n "$USER_BRANCH" ]]; then
+  BRANCH="$USER_BRANCH"
 else
-  # Try GitHub CLI default branch discovery
   GH_DEFAULT_BRANCH="$(gh repo view --json defaultBranchRef --jq .defaultBranchRef.name 2>/dev/null || true)"
   if [[ -n "${GH_DEFAULT_BRANCH}" ]]; then
     BRANCH="${GH_DEFAULT_BRANCH}"
   else
-    # Fallbacks: prefer master if exists, else main
     if git show-ref --verify --quiet refs/heads/master || git ls-remote --exit-code origin master &>/dev/null; then
       BRANCH="master"
     elif git show-ref --verify --quiet refs/heads/main || git ls-remote --exit-code origin main &>/dev/null; then
       BRANCH="main"
     else
-      # Use current HEAD branch name
       BRANCH="$(git rev-parse --abbrev-ref HEAD 2>/dev/null || echo master)"
     fi
   fi
@@ -60,7 +134,7 @@ echo
 echo "Commit status for $OWNER/$REPO ($BRANCH):"
 echo "-----------------------------------------"
 
-git log "origin/$BRANCH" --color=always --pretty="$FORMAT" -n 15 |
+git log "origin/$BRANCH" --color=always --pretty="$FORMAT" -n "$LIMIT" |
 while IFS=$'\t' read -r SHA MESSAGE; do
   # Query GitHub check runs for this commit
   CHECK_CONCLUSIONS=$(gh api "/repos/$OWNER/$REPO/commits/$SHA/check-runs" --jq '.check_runs[].conclusion' 2>/dev/null || true)

@@ -35,12 +35,33 @@ Branch resolution order when no argument is provided:
 3. `main` if present
 4. Current local HEAD branch
 
-### Planned Flags (not yet implemented)
+### Flags
 ```
-  --branch <name>      Use a specific branch (overrides auto-detect)
-  --limit <n>          Number of commits to display (default 15)
-  --format <text|json> Output format variant
-  --help               Show help / usage
+  --branch <name>   Use a specific branch (overrides auto-detect)
+  --limit <n>       Number of commits to display (default: 15)
+  --help, -h        Show help / usage
+  --version         Show version
+```
+
+Help example:
+```shell
+$ gh log-ci --help
+gh log-ci - show CI status next to recent commits
+
+Usage:
+  gh log-ci [options] [<branch>]
+
+Options:
+  --branch <name>   Branch to inspect (alternative to positional <branch>)
+  --limit <n>       Number of commits to display (default: 15)
+  --help, -h        Show this help text
+  --version         Show version
+
+Branch auto-detect order when <branch> not supplied:
+  1. GitHub default branch (via gh repo view)
+  2. master (if exists)
+  3. main (if exists)
+  4. current HEAD branch
 ```
 
 ## Output Example
