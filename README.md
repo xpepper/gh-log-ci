@@ -37,7 +37,8 @@ Branch resolution order when no argument is provided:
 ### Flags
 ```
   --branch <name>     Use a specific branch (overrides auto-detect)
-  --limit, -n <n>     Number of commits to display (default: 15; env LOG_CI_LIMIT overrides)
+  --limit, -n <n>     Number of commits to display (default: 15; env LOG_CI_LIMIT)
+  --concurrency, -c <n>  Parallel API calls (default: 4; env LOG_CI_CONCURRENCY)
   --help, -h          Show help / usage
   --version           Show version
 ```
@@ -51,8 +52,9 @@ Usage:
   gh log-ci [options] [<branch>]
 
 Options:
-  --branch <name>     Branch to inspect (alternative to positional <branch>)
-  --limit, -n <n>     Number of commits to display (default: 15; env LOG_CI_LIMIT overrides)
+  --branch <name>       Branch to inspect (alternative to positional <branch>)
+  --limit, -n <n>       Number of commits to display (default: 15; env LOG_CI_LIMIT)
+  --concurrency, -c <n> Parallel API calls (default: 4; env LOG_CI_CONCURRENCY)
   --help, -h          Show this help text
   --version           Show version
 
@@ -122,6 +124,7 @@ gh auth login
 ## Configuration (Current)
 - Branch: positional argument or `--branch` (auto-detected if omitted).
 - Commit count: `--limit` / `-n` (default 15) or environment `LOG_CI_LIMIT`.
+- Concurrency: `--concurrency` / `-c` (default 4) or environment `LOG_CI_CONCURRENCY`.
 
 ## Limitations
 - One API call per commit (performance impact on larger limits).
@@ -131,17 +134,18 @@ gh auth login
 - Assumes `origin` remote name.
 
 ## Roadmap
-- Flags: `--branch`, `--limit`, `--format`, `--help`.
-- More precise status aggregation (all green vs mixed).
-- Parallel / batched (GraphQL) status retrieval.
-- Cache recent commit statuses (temp file TTL).
-- JSON / Markdown / table outputs.
-- Filter by author / status / date.
-- Include workflow names on demand.
-- Add age column (e.g., `2h ago`).
-- Shell tests (bats) & CI (shellcheck).
-- Graceful rate-limit handling.
-- Emoji-less / no-color modes for accessibility.
+- Output formats: `--format json`, `--format table`, `--format md`.
+- More precise status aggregation (require all checks success for ✅, mixed state icon, per-check summaries).
+- GraphQL batch query to reduce API calls.
+- Cache recent commit statuses (temp file TTL; invalidate on new HEAD).
+- Filtering: author, status, date range, grep on commit message.
+- Workflow names and URLs (opt-in with a flag).
+- Commit age column (e.g., `2h ago`).
+- Tests: bats + shellcheck CI workflow.
+- Rate-limit handling with backoff + user notice.
+- Accessibility: `--no-emoji`, `--no-color` respecting `NO_COLOR`.
+- Performance metrics with `--debug` (timing per request).
+- Semantic versioning documented (bump minor for features, patch for fixes).
 
 ## Contributing
 1. Fork and clone.

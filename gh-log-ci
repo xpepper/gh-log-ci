@@ -3,7 +3,7 @@
 set -euo pipefail
 
 PROGRAM="gh log-ci"
-VERSION="0.1.0"
+VERSION="0.2.0"
 
 show_help() {
   cat <<'EOF'
@@ -13,10 +13,11 @@ Usage:
   gh log-ci [options] [<branch>]
 
 Options:
-  --branch <name>   Branch to inspect (alternative to positional <branch>)
-  --limit, -n <n>   Number of commits to display (default: 15; env LOG_CI_LIMIT overrides)
-  --help, -h        Show this help text
-  --version         Show version
+  --branch <name>     Branch to inspect (alternative to positional <branch>)
+  --limit, -n <n>     Number of commits to display (default: 15; env LOG_CI_LIMIT overrides)
+  --concurrency, -c <n>  Max parallel API calls (default: 4; env LOG_CI_CONCURRENCY overrides)
+  --help, -h          Show this help text
+  --version           Show version
 
 Branch auto-detect order when <branch> not supplied:
   1. GitHub default branch (via gh repo view)
@@ -25,9 +26,10 @@ Branch auto-detect order when <branch> not supplied:
   4. current HEAD branch
 
 Examples:
-  gh log-ci                # auto-detect branch
-  gh log-ci main           # explicit positional branch
+  gh log-ci                            # auto-detect branch
+  gh log-ci main                       # explicit positional branch
   gh log-ci --branch develop --limit 30
+  gh log-ci -c 8 -n 50                 # increase parallelism and number of commits
 
 Exit codes:
   0 success
@@ -39,6 +41,7 @@ EOF
 # Default values (can be overridden by env or flags)
 USER_BRANCH=""
 LIMIT="${LOG_CI_LIMIT:-15}"
+CONCURRENCY="${LOG_CI_CONCURRENCY:-4}"
 
 # Parse flags
 POS_ARGS=()
@@ -49,6 +52,9 @@ while [[ $# -gt 0 ]]; do
       ;;
     --limit|-n)
       LIMIT="${2:-}"; shift || true
+      ;;
+    --concurrency|-c)
+      CONCURRENCY="${2:-}"; shift || true
       ;;
     -h|--help)
       show_help; exit 0
@@ -76,9 +82,13 @@ if [[ -z "$USER_BRANCH" && ${#POS_ARGS[@]} -ge 1 ]]; then
   USER_BRANCH="${POS_ARGS[0]}"
 fi
 
-# Validate LIMIT is an integer >0
+# Validate numeric inputs
 if ! [[ "$LIMIT" =~ ^[0-9]+$ ]] || [[ "$LIMIT" -le 0 ]]; then
   echo "Error: --limit must be a positive integer (got '$LIMIT')." >&2
+  exit 1
+fi
+if ! [[ "$CONCURRENCY" =~ ^[0-9]+$ ]] || [[ "$CONCURRENCY" -le 0 ]]; then
+  echo "Error: --concurrency must be a positive integer (got '$CONCURRENCY')." >&2
   exit 1
 fi
 
@@ -134,25 +144,48 @@ echo
 echo "Commit status for $OWNER/$REPO ($BRANCH):"
 echo "-----------------------------------------"
 
-git log "origin/$BRANCH" --color=always --pretty="$FORMAT" -n "$LIMIT" |
+INDEX=0
+declare -A LINE_MAP
+declare -A SHA_MAP
 while IFS=$'\t' read -r SHA MESSAGE; do
-  # Query GitHub check runs for this commit
-  CHECK_CONCLUSIONS=$(gh api "/repos/$OWNER/$REPO/commits/$SHA/check-runs" --jq '.check_runs[].conclusion' 2>/dev/null || true)
+  LINE_MAP[$INDEX]="$MESSAGE"
+  SHA_MAP[$INDEX]="$SHA"
+  INDEX=$((INDEX+1))
+done < <(git log "origin/$BRANCH" --color=always --pretty="$FORMAT" -n "$LIMIT")
 
-  ICON="❔"
-  if [[ -z "$CHECK_CONCLUSIONS" ]]; then
-    ICON="🕓"
-  elif echo "$CHECK_CONCLUSIONS" | grep -qE 'failure|timed_out|action_required'; then
-    ICON="❌"
-  elif echo "$CHECK_CONCLUSIONS" | grep -q 'cancelled'; then
-    ICON="🚫"
-  elif echo "$CHECK_CONCLUSIONS" | grep -q 'success'; then
-    ICON="✅"
-  else
-    ICON="🕓"
+TOTAL=$INDEX
+TMPDIR=$(mktemp -d 2>/dev/null || mktemp -d -t ghlogci)
+job_count=0
+for i in $(seq 0 $((TOTAL-1))); do
+  SHA="${SHA_MAP[$i]}"
+  (
+    CHECK_CONCLUSIONS=$(gh api "/repos/$OWNER/$REPO/commits/$SHA/check-runs" --jq '.check_runs[].conclusion' 2>/dev/null || true)
+    ICON="❔"
+    if [[ -z "$CHECK_CONCLUSIONS" ]]; then
+      ICON="🕓"
+    elif echo "$CHECK_CONCLUSIONS" | grep -qE 'failure|timed_out|action_required'; then
+      ICON="❌"
+    elif echo "$CHECK_CONCLUSIONS" | grep -q 'cancelled'; then
+      ICON="🚫"
+    elif echo "$CHECK_CONCLUSIONS" | grep -q 'success'; then
+      ICON="✅"
+    else
+      ICON="🕓"
+    fi
+    echo "$ICON" > "$TMPDIR/$i"
+  ) &
+  job_count=$((job_count+1))
+  if [[ $job_count -ge $CONCURRENCY ]]; then
+    wait -n || wait
+    job_count=$((job_count-1))
   fi
-
-  echo "$ICON  $MESSAGE"
 done
+wait
+
+for i in $(seq 0 $((TOTAL-1))); do
+  ICON="$(cat "$TMPDIR/$i" 2>/dev/null || echo '❔')"
+  echo "$ICON  ${LINE_MAP[$i]}"
+done
+rm -rf "$TMPDIR" 2>/dev/null || true
 
 echo
