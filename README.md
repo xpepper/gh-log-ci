@@ -36,10 +36,10 @@ Branch resolution order when no argument is provided:
 
 ### Flags
 ```
-  --branch <name>   Use a specific branch (overrides auto-detect)
-  --limit <n>       Number of commits to display (default: 15)
-  --help, -h        Show help / usage
-  --version         Show version
+  --branch <name>     Use a specific branch (overrides auto-detect)
+  --limit, -n <n>     Number of commits to display (default: 15; env LOG_CI_LIMIT overrides)
+  --help, -h          Show help / usage
+  --version           Show version
 ```
 
 Help example:
@@ -51,10 +51,10 @@ Usage:
   gh log-ci [options] [<branch>]
 
 Options:
-  --branch <name>   Branch to inspect (alternative to positional <branch>)
-  --limit <n>       Number of commits to display (default: 15)
-  --help, -h        Show this help text
-  --version         Show version
+  --branch <name>     Branch to inspect (alternative to positional <branch>)
+  --limit, -n <n>     Number of commits to display (default: 15; env LOG_CI_LIMIT overrides)
+  --help, -h          Show this help text
+  --version           Show version
 
 Branch auto-detect order when <branch> not supplied:
   1. GitHub default branch (via gh repo view)
@@ -120,8 +120,8 @@ gh auth login
 5. Maps combined conclusions to an icon and prints decorated line.
 
 ## Configuration (Current)
-- Branch: positional argument (auto-detected if omitted).
-- Commit count: fixed at 15.
+- Branch: positional argument or `--branch` (auto-detected if omitted).
+- Commit count: `--limit` / `-n` (default 15) or environment `LOG_CI_LIMIT`.
 
 ## Limitations
 - One API call per commit (performance impact on larger limits).

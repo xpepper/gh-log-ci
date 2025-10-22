@@ -14,7 +14,7 @@ Usage:
 
 Options:
   --branch <name>   Branch to inspect (alternative to positional <branch>)
-  --limit <n>       Number of commits to display (default: 15)
+  --limit, -n <n>   Number of commits to display (default: 15; env LOG_CI_LIMIT overrides)
   --help, -h        Show this help text
   --version         Show version
 
@@ -36,9 +36,9 @@ Exit codes:
 EOF
 }
 
-# Default values
+# Default values (can be overridden by env or flags)
 USER_BRANCH=""
-LIMIT=15
+LIMIT="${LOG_CI_LIMIT:-15}"
 
 # Parse flags
 POS_ARGS=()
@@ -47,7 +47,7 @@ while [[ $# -gt 0 ]]; do
     --branch)
       USER_BRANCH="${2:-}"; shift || true
       ;;
-    --limit)
+    --limit|-n)
       LIMIT="${2:-}"; shift || true
       ;;
     -h|--help)
