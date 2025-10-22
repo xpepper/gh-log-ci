@@ -70,11 +70,6 @@ Branch auto-detect order when <branch> not supplied:
 ## Output Example
 ```
 $ gh log-ci
-
-my-repo
-
-Commit status for my-org/my-repo (master):
------------------------------------------
 ✅  49b3e7623 - (HEAD -> master, origin/master, origin/HEAD) refactor(component): improve caching (Wed Oct 22 15:15:13 2025 +0200) <Jane Doe>
 ❌  c4f35260a - feat(auth): add MFA (Wed Oct 22 09:25:09 2025 +0200) <John Smith>
 🕓  a390e5998 - chore(deps): bump library (Tue Oct 21 16:52:40 2025 +0200) <dependabot[bot]>

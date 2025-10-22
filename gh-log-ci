@@ -3,7 +3,7 @@
 set -euo pipefail
 
 PROGRAM="gh log-ci"
-VERSION="0.3.2"
+VERSION="0.3.3"
 
 show_help() {
   cat <<'EOF'
@@ -141,15 +141,9 @@ else
   echo "Warning: Remote branch '$BRANCH' not found on origin. Using local branch if available." >&2
 fi
 
-echo "$REPO"
-
-# Build a format with: <plain SHA><TAB><colored pretty message>
+ # Build a format with: <plain SHA><TAB><colored pretty message>
 # Use %x09 for a literal TAB (portable) so we can split safely.
 FORMAT='%H%x09%Cred%h%Creset -%C(auto)%d%Creset %s %Cgreen(%ad) %C(bold blue)<%an>%Creset'
-
-echo
-echo "Commit status for $OWNER/$REPO ($BRANCH):"
-echo "-----------------------------------------"
 
 INDEX=0
 declare -A LINE_MAP
