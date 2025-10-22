@@ -314,7 +314,8 @@ run_once() {
 
 if [[ $WATCH -eq 1 ]]; then
   while :; do
-    clear
+    # Use clear with fallback to ANSI reset; suppress errors (CI may lack termcap)
+    clear 2>/dev/null || printf '\033c'
     echo "[watch] $(date '+%Y-%m-%d %H:%M:%S') branch=$BRANCH interval=${WATCH_INTERVAL}s limit=$LIMIT"
     run_once
     if [[ "${LOG_CI_WATCH_ONCE:-0}" == "1" ]]; then
