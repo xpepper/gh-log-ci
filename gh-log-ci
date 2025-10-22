@@ -2,8 +2,29 @@
 
 set -euo pipefail
 
-# Default branch is 'master' if not provided
-BRANCH=${1:-master}
+# Determine branch:
+# 1. If user passed an argument, use it.
+# 2. Else attempt to get default branch via gh repo view.
+# 3. Fallback order: detected default -> master -> main -> current HEAD branch.
+if [[ $# -ge 1 ]]; then
+  BRANCH="$1"
+else
+  # Try GitHub CLI default branch discovery
+  GH_DEFAULT_BRANCH="$(gh repo view --json defaultBranchRef --jq .defaultBranchRef.name 2>/dev/null || true)"
+  if [[ -n "${GH_DEFAULT_BRANCH}" ]]; then
+    BRANCH="${GH_DEFAULT_BRANCH}"
+  else
+    # Fallbacks: prefer master if exists, else main
+    if git show-ref --verify --quiet refs/heads/master || git ls-remote --exit-code origin master &>/dev/null; then
+      BRANCH="master"
+    elif git show-ref --verify --quiet refs/heads/main || git ls-remote --exit-code origin main &>/dev/null; then
+      BRANCH="main"
+    else
+      # Use current HEAD branch name
+      BRANCH="$(git rev-parse --abbrev-ref HEAD 2>/dev/null || echo master)"
+    fi
+  fi
+fi
 
 # Detect remote URL for origin or fallback to first remote
 REMOTE_URL=$(git remote get-url origin 2>/dev/null || git remote get-url "$(git remote | head -n1)" 2>/dev/null || true)
@@ -22,8 +43,12 @@ else
   exit 1
 fi
 
-# Fetch latest commits from remote branch
-git fetch origin "$BRANCH" --quiet
+# Ensure we have remote branch; fetch quietly, tolerate missing remote branch gracefully.
+if git ls-remote --exit-code origin "$BRANCH" &>/dev/null; then
+  git fetch origin "$BRANCH" --quiet
+else
+  echo "Warning: Remote branch '$BRANCH' not found on origin. Using local branch if available." >&2
+fi
 
 echo "$REPO"
 

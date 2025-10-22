@@ -9,7 +9,7 @@ Looking at commit history alone doesn't tell you if the associated pipelines suc
 - Code review follow-up (ensure post-merge checks passed)
 
 ## Features
-- Shows last 15 commits of a branch (default: `master`) from the remote.
+- Shows last 15 commits of a branch (auto-detected default if no arg: GitHub's default branch, else falls back to `master`, `main`, or current HEAD) from the remote.
 - Parses the associated GitHub check runs and derives an icon summarizing overall state.
 - Works with any repo that has GitHub Actions or other GitHub Check providers.
 - Colorized commit output identical to regular `git log --pretty` formatting.
@@ -51,14 +51,19 @@ gh extension install <owner>/gh-log-ci
 ```
 
 ## Usage
-List CI status for the default branch (`master`):
+List CI status for the repository's default branch:
 ```bash
 gh log-ci
 ```
-Specify a branch:
+Specify a branch explicitly:
 ```bash
-gh log-ci main
+gh log-ci release-branch
 ```
+Branch resolution when no argument is given:
+1. `gh repo view --json defaultBranchRef` (GitHub default)
+2. `master` if present
+3. `main` if present
+4. Current local HEAD branch name
 Show help (not implemented yet; see roadmap below).
 
 ## How It Works
@@ -70,7 +75,7 @@ Show help (not implemented yet; see roadmap below).
 
 ## Configuration
 Currently minimal:
-- Branch: first CLI argument (defaults to `master`).
+- Branch: first CLI argument (auto-detects if omitted).
 - Number of commits: fixed to 15 (will be configurable later).
 
 ## Limitations
