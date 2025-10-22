@@ -284,7 +284,8 @@ for i in $(seq 0 $((TOTAL-1))); do
     # Wait for first PID in queue
     wait "${pids[0]}" 2>/dev/null || true
     # Remove first element
-    pids=(${pids[@]:1})
+  # shellcheck disable=SC2206 # using array slice intentionally; quoting prevents word splitting
+  pids=("${pids[@]:1}")
   fi
 done
 for pid in "${pids[@]}"; do
