@@ -169,6 +169,12 @@ Convenience local CI script (runs both):
 ./ci-local.sh
 ```
 
+Without Homebrew (alternative via Docker):
+```bash
+docker run --rm -v "$PWD":/work -w /work ubuntu:22.04 bash -c \
+  "apt-get update && apt-get install -y bats shellcheck git && bats tests"
+```
+
 ## Contributing
 1. Fork and clone.
 2. Create a feature branch.
