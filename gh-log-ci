@@ -1,35 +1,59 @@
 #!/usr/bin/env bash
-set -e
 
-echo "Hello gh-log-ci!"
+set -euo pipefail
 
-# Snippets to help get started:
+# Default branch is 'master' if not provided
+BRANCH=${1:-master}
 
-# Determine if an executable is in the PATH
-# if ! type -p ruby >/dev/null; then
-#   echo "Ruby not found on the system" >&2
-#   exit 1
-# fi
+# Detect remote URL for origin or fallback to first remote
+REMOTE_URL=$(git remote get-url origin 2>/dev/null || git remote get-url "$(git remote | head -n1)" 2>/dev/null || true)
+if [[ -z "${REMOTE_URL:-}" ]]; then
+  echo "Error: Could not detect Git remote URL." >&2
+  exit 1
+fi
 
-# Pass arguments through to another command
-# gh issue list "$@" -R cli/cli
+# Parse OWNER and REPO from GitHub remote URL (optional .git suffix)
+if [[ "$REMOTE_URL" =~ github.com[:/]([^/]+)/([^/]+)(\.git)?$ ]]; then
+  OWNER="${BASH_REMATCH[1]}"
+  REPO="${BASH_REMATCH[2]}"
+  REPO="${REPO%.git}"
+else
+  echo "Error: Remote URL is not a recognized GitHub URL." >&2
+  exit 1
+fi
 
-# Using the gh api command to retrieve and format information
-# QUERY='
-#   query($endCursor: String) {
-#     viewer {
-#       repositories(first: 100, after: $endCursor) {
-#         nodes {
-#           nameWithOwner
-#           stargazerCount
-#         }
-#       }
-#     }
-#   }
-# '
-# TEMPLATE='
-#   {{- range $repo := .data.viewer.repositories.nodes -}}
-#     {{- printf "name: %s - stargazers: %v\n" $repo.nameWithOwner $repo.stargazerCount -}}
-#   {{- end -}}
-# '
-# exec gh api graphql -f query="${QUERY}" --paginate --template="${TEMPLATE}"
+# Fetch latest commits from remote branch
+git fetch origin "$BRANCH" --quiet
+
+echo "$REPO"
+
+# Build a format with: <plain SHA><TAB><colored pretty message>
+# Use %x09 for a literal TAB (portable) so we can split safely.
+FORMAT='%H%x09%Cred%h%Creset -%C(auto)%d%Creset %s %Cgreen(%ad) %C(bold blue)<%an>%Creset'
+
+echo
+echo "Commit status for $OWNER/$REPO ($BRANCH):"
+echo "-----------------------------------------"
+
+git log "origin/$BRANCH" --color=always --pretty="$FORMAT" -n 15 |
+while IFS=$'\t' read -r SHA MESSAGE; do
+  # Query GitHub check runs for this commit
+  CHECK_CONCLUSIONS=$(gh api "/repos/$OWNER/$REPO/commits/$SHA/check-runs" --jq '.check_runs[].conclusion' 2>/dev/null || true)
+
+  ICON="❔"
+  if [[ -z "$CHECK_CONCLUSIONS" ]]; then
+    ICON="🕓"
+  elif echo "$CHECK_CONCLUSIONS" | grep -qE 'failure|timed_out|action_required'; then
+    ICON="❌"
+  elif echo "$CHECK_CONCLUSIONS" | grep -q 'cancelled'; then
+    ICON="🚫"
+  elif echo "$CHECK_CONCLUSIONS" | grep -q 'success'; then
+    ICON="✅"
+  else
+    ICON="🕓"
+  fi
+
+  echo "$ICON  $MESSAGE"
+done
+
+echo
