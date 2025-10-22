@@ -141,10 +141,10 @@ gh auth login
 - Assumes `origin` remote name.
 
 ## Roadmap
+- Add a "watch" mode to monitor new commits live. It should poll periodically and update the display.
 - Cache recent commit statuses (temp file TTL; invalidate on new HEAD, store results keyed by branch head SHA).
 - Accessibility: `--no-emoji`, `--no-color` respecting `NO_COLOR`.
 - Rate-limit handling with backoff + user notice.
-- Add a "watch" mode to monitor new commits live. It should poll periodically and update the display.
 - Commit age column (e.g., `2h ago`).
 - GraphQL batch query to reduce API calls: use a single GraphQL batch query to fetch all check suite statuses.
 - Implement the queued vs in_progress distinction next (would be a minor version bump)
