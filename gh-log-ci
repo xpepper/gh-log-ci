@@ -3,7 +3,7 @@
 set -euo pipefail
 
 PROGRAM="gh log-ci"
-VERSION="0.3.1"
+VERSION="0.3.2"
 
 show_help() {
   cat <<'EOF'
@@ -199,18 +199,17 @@ for i in $(seq 0 $((TOTAL-1))); do
       done <<<"$RAW_LINES"
     fi
 
-    # Overall icon aggregation precedence
+    # Overall icon aggregation precedence (fail > pending > cancelled > mixed success+fail > success)
     OVERALL_ICON="❔"
     if [[ $fail_count -gt 0 ]]; then
       OVERALL_ICON="❌"
-    elif [[ $pending_count -gt 0 && $fail_count -eq 0 ]]; then
+    elif [[ $pending_count -gt 0 ]]; then
       OVERALL_ICON="🕓"
-    elif [[ $cancel_count -gt 0 && $success_count -eq 0 && $fail_count -eq 0 && $pending_count -eq 0 ]]; then
+    # Any cancelled (with no failures) overrides success so we keep previous UX of showing commit as cancelled
+    elif [[ $cancel_count -gt 0 ]]; then
       OVERALL_ICON="🚫"
-    elif [[ $success_count -gt 0 && $fail_count -eq 0 && $pending_count -eq 0 ]]; then
+    elif [[ $success_count -gt 0 && $fail_count -eq 0 ]]; then
       OVERALL_ICON="✅"
-    elif [[ $success_count -gt 0 && $fail_count -gt 0 ]]; then
-      OVERALL_ICON="⚠"  # mixed
     fi
 
     {

@@ -86,7 +86,7 @@ Commit status for my-org/my-repo (master):
 | ✅ | All completed check runs succeeded (no failures/pending) |
 | ❌ | At least one failing/timed_out/action_required check run |
 | 🕓 | One or more check runs still in progress / queued and no failures yet |
-| 🚫 | All check runs cancelled (and none succeeded) |
+| 🚫 | One or more cancelled runs and no failures/pending (takes precedence over success) |
 | ⚠ | Mixed: successes and failures both present |
 | ➖ | Neutral/skipped/stale (shown only in per-check detail) |
 | ❔ | Fallback / unknown state |
