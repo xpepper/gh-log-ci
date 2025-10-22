@@ -203,9 +203,7 @@ Early MVP; expect changes as features mature.
 
 | Version | Date | Notes |
 |---------|------|-------|
-| 0.3.6 | 2025-10-22 | Progress-aware spinner (shows completed/total); robust concurrency queue; per-request `--api-timeout` with ⏲ icon on timeout |
-| 0.3.5 | 2025-10-22 | Initial spinner + timeout flag added |
-| 0.3.4 | 2025-10-22 | Loading spinner (`--no-spinner`) option |
+| 0.3.4 | 2025-10-22 | Progress-aware spinner (`--no-spinner`) option (shows completed/total); per-request `--api-timeout` with ⏲ icon on timeout |
 | 0.3.3 | 2025-10-22 | Removed header banner from output for compact display |
 | 0.3.2 | 2025-10-22 | Cancelled status precedence fix (show 🚫 when any cancelled and no failures) |
 | 0.3.1 | 2025-10-22 | Added tests (bats) & CI workflow (shellcheck + tests) |
