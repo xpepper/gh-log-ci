@@ -24,15 +24,6 @@ Basic usage (auto-detect default branch):
 ```shell
 gh log-ci
 ```
-Specify a branch explicitly:
-```shell
-gh log-ci release-branch
-```
-Branch resolution order when no argument is provided:
-1. GitHub default branch (`gh repo view --json defaultBranchRef --jq .defaultBranchRef.name`)
-2. `master` if present
-3. `main` if present
-4. Current local HEAD branch
 
 ### Flags
 ```
@@ -66,12 +57,18 @@ Options:
   --help, -h          Show this help text
   --version           Show version
 
-Branch auto-detect order when <branch> not supplied:
-  1. GitHub default branch (via gh repo view)
-  2. master (if exists)
-  3. main (if exists)
-  4. current HEAD branch
 ```
+
+Specify a branch explicitly:
+```shell
+gh log-ci release-branch
+```
+Branch resolution order when no argument is provided:
+1. GitHub default branch (`gh repo view --json defaultBranchRef --jq .defaultBranchRef.name`)
+2. `master` if present
+3. `main` if present
+4. Current local HEAD branch
+
 
 ## Output Example
 ```
@@ -172,7 +169,7 @@ Run locally:
 shellcheck gh-log-ci
 bats tests
 ```
-CI runs automatically on pushes / PRs (see `.github/workflows/ci.yml`). A badge can be added once the repository is public.
+CI runs automatically on pushes / PRs (see `.github/workflows/ci.yml`).
 
 Convenience local CI script (runs both):
 ```bash
