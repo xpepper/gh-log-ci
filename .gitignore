@@ -11,3 +11,9 @@ ci-bats-output.txt
 .tmp/
 *.tmp
 
+# Test cache directory (created by cache_success.bats)
+.test-cache/
+
+# User cache (success cache); path inside HOME, pattern for safety if copied locally
+gh-log-ci-cache/
+
