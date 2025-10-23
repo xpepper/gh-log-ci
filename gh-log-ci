@@ -62,7 +62,6 @@ WATCH=0
 WATCH_INTERVAL="${LOG_CI_WATCH_INTERVAL:-10}"
 CACHE_TTL="${LOG_CI_CACHE_TTL:-86400}" # seconds (default 24h)
 CACHE_DIR="${LOG_CI_CACHE_DIR:-$HOME/.cache/gh-log-ci}"
-CACHE_FILE="$CACHE_DIR/${OWNER:-unknown}_${REPO:-unknown}_success.cache"
 CACHE_DEBUG="${LOG_CI_CACHE_DEBUG:-0}"
 
 # Parse flags
@@ -174,6 +173,9 @@ else
   exit 1
 fi
 
+# Now that OWNER/REPO known, finalize cache file path (was deferred until after parse)
+CACHE_FILE="$CACHE_DIR/${OWNER}_${REPO}_success.cache"
+
 # Ensure we have remote branch; fetch quietly, tolerate missing remote branch gracefully.
 if git ls-remote --exit-code origin "$BRANCH" &>/dev/null; then
   git fetch origin "$BRANCH" --quiet
@@ -212,11 +214,17 @@ run_once() {
   declare -A LINE_MAP
   declare -A SHA_MAP
   declare -A SUCCESS_CACHE
+  # Determine ref to log: prefer origin/<branch> if it exists, else local branch
+  LOG_REF="origin/$BRANCH"
+  if ! git show-ref --verify --quiet "refs/remotes/$LOG_REF"; then
+    # fallback to local branch name
+    LOG_REF="$BRANCH"
+  fi
   while IFS=$'\t' read -r SHA MESSAGE; do
     LINE_MAP[$INDEX]="$MESSAGE"
     SHA_MAP[$INDEX]="$SHA"
     INDEX=$((INDEX+1))
-  done < <(git log "origin/$BRANCH" --color=always --pretty="$FORMAT" -n "$LIMIT")
+  done < <(git log "$LOG_REF" --color=always --pretty="$FORMAT" -n "$LIMIT")
 
   # Prepare cache (success-only)
   if [[ ! -d "$CACHE_DIR" ]]; then
