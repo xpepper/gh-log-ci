@@ -141,7 +141,7 @@ gh auth login
 - Spinner: disable with `--no-spinner` or `LOG_CI_NO_SPINNER=1`.
 - API request timeout: `--api-timeout <secs>` (default 30) or `LOG_CI_API_TIMEOUT`.
 - Watch mode: `--watch` continuously refresh; `--watch-interval <s>` (default 10) or `LOG_CI_WATCH_INTERVAL`.
-- Success cache (success-only): TTL `LOG_CI_CACHE_TTL` (default 300s); directory `LOG_CI_CACHE_DIR` (default ~/.cache/gh-log-ci); debug `LOG_CI_CACHE_DEBUG=1`.
+- Success cache (success-only): TTL `LOG_CI_CACHE_TTL` (default 86400s / 24h); directory `LOG_CI_CACHE_DIR` (default ~/.cache/gh-log-ci); debug `LOG_CI_CACHE_DEBUG=1`.
 
 ## Limitations
 - One REST API call per commit (future: GraphQL batch).
@@ -152,6 +152,7 @@ gh auth login
 
 ## Roadmap
 - Add a makefile to execute common tasks like a cleanup target task (to remove leftover cache directories) or test tasks.
+- Add a flag to force refresh (ignore cache), e.g. `--no-cache`.
 - Accessibility: `--no-emoji`, `--no-color` respecting `NO_COLOR`.
 - Rate-limit handling with backoff + user notice.
 - Commit age column (e.g., `2h ago`).
@@ -208,7 +209,7 @@ Early MVP; expect changes as features mature.
 
 | Version | Date | Notes |
 |---------|------|-------|
-| 0.4.1 | 2025-10-23 | Success-only caching (TTL, dir config, debug env) skips API calls for cached successes |
+| Unreleased | TBD | Success-only caching (TTL, dir config, debug env) skips API calls for cached successes |
 | 0.4.0 | 2025-10-22 | Watch mode (`--watch`, `--watch-interval`); refactored core for repeated polling |
 | 0.3.4 | 2025-10-22 | Progress-aware spinner (`--no-spinner`) option (shows completed/total); per-request `--api-timeout` with ⏲ icon on timeout |
 | 0.3.3 | 2025-10-22 | Removed header banner from output for compact display |

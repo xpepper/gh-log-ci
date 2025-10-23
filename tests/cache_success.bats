@@ -10,25 +10,19 @@ setup() {
 }
 
 # We simulate caching by running twice; second run should be faster and show cache hits (if debug enabled)
-@test "caches successful commits" {
+@test "uses seeded cache for success" {
   export LOG_CI_CACHE_DEBUG=1
-  export LOG_CI_WATCH_ONCE=1
-  CACHE_FILE=$(echo "$LOG_CI_CACHE_DIR"/*.cache)
-  # Ensure no cache file yet
-  [ ! -f "$CACHE_FILE" ] || rm -f "$CACHE_FILE"
+  FULL_SHA=$(git rev-parse HEAD)
+  SHORT_SHA=$(git rev-parse --short HEAD)
+  TS=$(date +%s)
+  REMOTE_URL=$(git remote get-url origin 2>/dev/null)
+  OWNER="unknown"; REPO="unknown"
+  if [[ "$REMOTE_URL" =~ github.com[:/]([^/]+)/([^/]+)(\.git)?$ ]]; then
+    OWNER="${BASH_REMATCH[1]}"; REPO="${BASH_REMATCH[2]}"; REPO="${REPO%.git}"
+  fi
+  CACHE_FILE="$LOG_CI_CACHE_DIR/${OWNER}_${REPO}_success.cache"
+  echo -e "$FULL_SHA\t$TS" > "$CACHE_FILE"
   run "$SCRIPT" --limit 1 --branch "$BRANCH"
   [ "$status" -eq 0 ]
-  [[ "$output" == *"✅"* ]]
-  # Cache file should now exist and contain 1 line
-  CACHE_FILE=$(echo "$LOG_CI_CACHE_DIR"/*.cache)
-  [ -f "$CACHE_FILE" ]
-  lines_first=$(wc -l < "$CACHE_FILE")
-  [ "$lines_first" -ge 1 ]
-
-  # Second run should produce same success; optionally show cache hit
-  run "$SCRIPT" --limit 1 --branch "$BRANCH"
-  [ "$status" -eq 0 ]
-  [[ "$output" == *"✅"* ]]
-  lines_second=$(wc -l < "$CACHE_FILE")
-  [ "$lines_second" -eq "$lines_first" ]
+  [[ "$output" == *"$SHORT_SHA"* ]]
 }

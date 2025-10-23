@@ -3,7 +3,7 @@
 set -euo pipefail
 
 PROGRAM="gh log-ci"
-VERSION="0.4.1"
+VERSION="0.4.0"
 
 show_help() {
   cat <<'EOF'
@@ -60,7 +60,7 @@ NO_SPINNER="${LOG_CI_NO_SPINNER:-0}"
 API_TIMEOUT="${LOG_CI_API_TIMEOUT:-30}"
 WATCH=0
 WATCH_INTERVAL="${LOG_CI_WATCH_INTERVAL:-10}"
-CACHE_TTL="${LOG_CI_CACHE_TTL:-300}" # seconds (default 5 min)
+CACHE_TTL="${LOG_CI_CACHE_TTL:-86400}" # seconds (default 24h)
 CACHE_DIR="${LOG_CI_CACHE_DIR:-$HOME/.cache/gh-log-ci}"
 CACHE_FILE="$CACHE_DIR/${OWNER:-unknown}_${REPO:-unknown}_success.cache"
 CACHE_DEBUG="${LOG_CI_CACHE_DEBUG:-0}"
