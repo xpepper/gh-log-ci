@@ -3,7 +3,7 @@
 set -euo pipefail
 
 PROGRAM="gh log-ci"
-VERSION="0.4.0"
+VERSION="0.4.1"
 
 show_help() {
   cat <<'EOF'

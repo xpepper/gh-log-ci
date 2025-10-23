@@ -206,7 +206,7 @@ Early MVP; expect changes as features mature.
 
 | Version | Date | Notes |
 |---------|------|-------|
-| Unreleased | TBD | Success-only caching (TTL, dir config, debug env) skips API calls for cached successes |
+| 0.4.1 | 2025-10-23 | Success-only caching (TTL, dir config, debug env) skips API calls for cached successes |
 | 0.4.0 | 2025-10-22 | Watch mode (`--watch`, `--watch-interval`); refactored core for repeated polling |
 | 0.3.4 | 2025-10-22 | Progress-aware spinner (`--no-spinner`) option (shows completed/total); per-request `--api-timeout` with ⏲ icon on timeout |
 | 0.3.3 | 2025-10-22 | Removed header banner from output for compact display |
