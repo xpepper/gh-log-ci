@@ -3,7 +3,7 @@
 set -euo pipefail
 
 PROGRAM="gh log-ci"
-VERSION="0.4.1"
+VERSION="0.5.0"
 
 show_help() {
   cat <<'EOF'
@@ -12,17 +12,18 @@ gh log-ci - show CI status next to recent commits
 Usage:
   gh log-ci [options] [<branch>]
 
-Options:
-  --branch <name>        Branch to inspect (alternative to positional <branch>)
-  --limit, -n <n>        Number of commits to display (default: 15; env LOG_CI_LIMIT overrides)
-  --concurrency, -c <n>  Max parallel API calls (default: 4; env LOG_CI_CONCURRENCY overrides)
-  --checks, -C           Show per-check run summaries beneath each commit (env LOG_CI_SHOW_CHECKS=1)
-  --no-spinner           Disable loading spinner (env LOG_CI_NO_SPINNER=1)
-  --api-timeout <secs>   Max seconds per API request (default: 30; env LOG_CI_API_TIMEOUT)
-  --watch                Continuously poll and update commit statuses
-  --watch-interval <s>   Seconds between polls in watch mode (default: 10; env LOG_CI_WATCH_INTERVAL)
-  --help, -h             Show this help text
-  --version              Show version
+ Options:
+   --branch <name>        Branch to inspect (alternative to positional <branch>)
+   --limit, -n <n>        Number of commits to display (default: 15; env LOG_CI_LIMIT overrides)
+   --concurrency, -c <n>  Max parallel API calls (default: 4; env LOG_CI_CONCURRENCY overrides)
+   --checks, -C           Show per-check run summaries beneath each commit (env LOG_CI_SHOW_CHECKS=1)
+   --no-spinner           Disable loading spinner (env LOG_CI_NO_SPINNER=1)
+   --api-timeout <secs>   Max seconds per API request (default: 30; env LOG_CI_API_TIMEOUT)
+   --watch                Continuously poll and update commit statuses
+   --watch-interval <s>   Seconds between polls in watch mode (default: 10; env LOG_CI_WATCH_INTERVAL)
+   --no-cache             Ignore success cache, force fresh API calls for all commits
+   --help, -h             Show this help text
+   --version              Show version
 
 Branch auto-detect order when <branch> not supplied:
   1. GitHub default branch (via gh repo view)
@@ -63,6 +64,7 @@ WATCH_INTERVAL="${LOG_CI_WATCH_INTERVAL:-10}"
 CACHE_TTL="${LOG_CI_CACHE_TTL:-86400}" # seconds (default 24h)
 CACHE_DIR="${LOG_CI_CACHE_DIR:-$HOME/.cache/gh-log-ci}"
 CACHE_DEBUG="${LOG_CI_CACHE_DEBUG:-0}"
+NO_CACHE=0
 
 # Parse flags
 POS_ARGS=()
@@ -91,6 +93,9 @@ while [[ $# -gt 0 ]]; do
       ;;
     --watch-interval)
       WATCH_INTERVAL="${2:-}"; shift || true
+      ;;
+    --no-cache)
+      NO_CACHE=1
       ;;
     -h|--help)
       show_help; exit 0
@@ -269,8 +274,8 @@ run_once() {
   pids=()
   for i in $(seq 0 $((TOTAL-1))); do
     SHA="${SHA_MAP[$i]}"
-    # Cache hit: if commit is cached success and not showing checks, skip API
-    if [[ -n "${SUCCESS_CACHE[$SHA]:-}" && "$SHOW_CHECKS" != "1" ]]; then
+    # Cache hit: if commit is cached success and not showing checks and --no-cache not set, skip API
+    if [[ -n "${SUCCESS_CACHE[$SHA]:-}" && "$SHOW_CHECKS" != "1" && "$NO_CACHE" != "1" ]]; then
       if [[ "$CACHE_DEBUG" == "1" ]]; then
         echo "[cache hit] $SHA" >&2
       fi
