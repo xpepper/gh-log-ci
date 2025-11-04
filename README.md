@@ -181,6 +181,22 @@ docker run --rm -v "$PWD":/work -w /work ubuntu:22.04 bash -c \
   "apt-get update && apt-get install -y bats shellcheck git && bats tests"
 ```
 
+## Makefile Tasks
+
+For easier development and maintenance, this project includes a Makefile with common tasks:
+
+```bash
+make help              # List all available tasks
+make test              # Run all tests (shellcheck + bats)
+make shellcheck        # Run shellcheck only
+make bats              # Run bats tests only
+make ci-local          # Run local CI script
+make clean-cache       # Remove all cache files
+make list-cache        # List cache files
+```
+
+See `make help` for a complete list of available tasks.
+
 ## Contributing
 1. Fork and clone.
 2. Create a feature branch.
