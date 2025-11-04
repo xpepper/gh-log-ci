@@ -148,7 +148,6 @@ gh auth login
 - Assumes `origin` remote name.
 
 ## Roadmap
-- Add a makefile to execute common tasks like a cleanup target task (to remove leftover cache directories) or test tasks.
 - Add a flag to force refresh (ignore cache), e.g. `--no-cache`.
 - Accessibility: `--no-emoji`, `--no-color` respecting `NO_COLOR`.
 - Rate-limit handling with backoff + user notice.
