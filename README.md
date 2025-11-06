@@ -36,8 +36,8 @@ gh log-ci
   --watch                Continuously poll and update commit statuses
   --watch-interval <s>   Seconds between polls in watch mode (default: 10; env LOG_CI_WATCH_INTERVAL)
   --no-cache             Ignore success cache, force fresh API calls for all commits
-  --help, -h          Show help / usage
-  --version           Show version
+  --help, -h             Show help / usage
+  --version              Show version
 ```
 
 Help example:
@@ -55,8 +55,8 @@ Options:
   --checks, -C           Show per-check run summaries
   --no-spinner           Disable loading spinner (env LOG_CI_NO_SPINNER=1)
   --api-timeout <secs>   Max seconds per API request (default: 30; env LOG_CI_API_TIMEOUT)
-  --help, -h          Show this help text
-  --version           Show version
+  --help, -h             Show this help text
+  --version              Show version
   --no-cache             Ignore success cache, force fresh API calls for all commits
 
 ```

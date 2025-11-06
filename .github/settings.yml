@@ -1,0 +1,29 @@
+repository:
+  description: A GitHub CLI extension that shows CI status next to recent commits.
+  homepage: https://github.com/xpepper/gh-log-ci
+  topics: gh-extension, continuous-integration, cli, bash
+  default_branch: master
+  private: false
+  has_issues: true
+  has_wiki: false
+  has_projects: false
+
+branches:
+  - name: master
+    protection:
+      required_status_checks:
+        strict: true # Require branch to be up to date before merging
+        contexts:
+          # The required check context must exactly match the check run name.
+          # Format: <workflow name> / <job name>
+          # Workflow name: "CI" (see .github/workflows/ci.yml)
+          # Job name/id: "lint-and-test"
+          - "CI / lint-and-test"
+      enforce_admins: false
+      required_pull_request_reviews:
+        required_approving_review_count: 1
+        dismiss_stale_reviews: true
+        require_code_owner_reviews: false
+      restrictions: null # No push restrictions (anyone with write can create PRs)
+      required_linear_history: false
+      allow_fork_syncing: true
