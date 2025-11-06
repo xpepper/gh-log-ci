@@ -59,6 +59,7 @@ make run
 - Try to not mix in the same commit two different types of changes (e.g., refactorings and feats), as this makes it harder to review and understand the changes, and to assess the risk related to releasing them.
 - Prefer creating a focused pull request (PR) instead of pushing directly to the main branch.
 - Always update the README and this file when adding features or changing behavior.
+- Don't forget to update the version in the script header when releasing a new version.
 
 ### CI/CD
 - GitHub Actions workflow in `.github/workflows/ci.yml`
