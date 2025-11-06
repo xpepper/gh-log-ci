@@ -24,23 +24,8 @@ gh-log-ci is a GitHub CLI extension that displays CI status next to commit logs.
 # Run all tests
 make test
 
-# Run shellcheck only
-make shellcheck
-
-# Run bats tests only
-make bats
-
 # Run local CI script
 make ci-local
-
-# Install dependencies (macOS)
-make install-deps-macos
-
-# Install dependencies (Ubuntu)
-make install-deps-ubuntu
-
-# Clean cache
-make clean-cache
 
 # Run the script
 make run
