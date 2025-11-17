@@ -86,6 +86,7 @@ $ gh log-ci
 | ✅ | All completed check runs succeeded (no failures/pending) |
 | ❌ | At least one failing/timed_out/action_required check run |
 | 🕓 | One or more check runs still in progress / queued and no failures yet |
+| 🔁 | Queued run blocked by earlier in-progress run of same workflow |
 | 🚫 | One or more cancelled runs and no failures/pending (takes precedence over success) |
 | ⚠ | Mixed: successes and failures both present |
 | ⏲ | Timed out while fetching check runs (API didn't respond within --api-timeout) |
@@ -105,6 +106,7 @@ $ gh log-ci
 | API timeouts | Per-request timeout preventing hangs (`--api-timeout`, shows ⏲ on timeout) |
 | Watch mode | Continuously polls to surface new commits and evolving statuses (`--watch`, `--watch-interval`) |
 | Success caching | Skips API calls for commits already successful within TTL (success-only, configurable) |
+| Blocked detection | Distinguishes queued runs blocked by in-progress workflow (🔁 icon) |
 
 ## Permissions
 
@@ -155,7 +157,7 @@ gh auth login
 - Rate-limit handling with backoff + user notice.
 - Commit age column (e.g., `2h ago`).
 - GraphQL batch query to reduce API calls: use a single GraphQL batch query to fetch all check suite statuses.
-- Implement the queued vs in_progress distinction next (would be a minor version bump)
+<!-- queued vs in_progress distinction implemented in 0.6.0 -->
 - Replace temp files with mkfifo or captured descriptors for even less I/O (micro-optimization).
 - Workflow names and URLs (opt-in with a flag).
 - Filtering: author, status, date range, grep on commit message.
@@ -223,6 +225,7 @@ Early MVP; expect changes as features mature.
 
 | Version | Date | Notes |
 |---------|------|-------|
+| 0.6.0 | 2025-11-17 | Distinguish blocked queued runs (🔁 icon); update legend & features |
 | 0.5.0 | 2025-11-04 | Add --no-cache flag to bypass success cache and force fresh API calls |
 | 0.4.1 | 2025-10-23 | Success-only caching (TTL, dir config, debug env) skips API calls for cached successes |
 | 0.4.0 | 2025-10-22 | Watch mode (`--watch`, `--watch-interval`); refactored core for repeated polling |
