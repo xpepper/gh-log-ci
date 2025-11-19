@@ -3,7 +3,7 @@
 set -euo pipefail
 
 PROGRAM="gh log-ci"
-VERSION="0.5.0"
+VERSION="0.6.0"
 
 show_help() {
   cat <<'EOF'
@@ -214,6 +214,129 @@ run_with_timeout() {
   rm -f "$_tmp_out" 2>/dev/null || true
 }
 
+fetch_check_runs_graphql() {
+  local -n _shas=$1
+  local -n _results=$2
+
+  # Build GraphQL query for batch fetching commit statuses
+  local query="{
+    repository(owner: \"$OWNER\", name: \"$REPO\") {"
+
+  local idx=0
+  for sha in "${_shas[@]}"; do
+    query+="
+      commit${idx}: object(expression: \"${sha}\") {
+        ... on Commit {
+          oid
+          statusCheckRollup {
+            state
+            contexts(last: 100) {
+              nodes {
+                ... on CheckRun {
+                  name
+                  status
+                  conclusion
+                }
+                ... on StatusContext {
+                  context
+                  state
+                }
+              }
+            }
+          }
+          checkSuites(first: 100) {
+            nodes {
+              checkRuns(first: 100) {
+                nodes {
+                  name
+                  status
+                  conclusion
+                }
+              }
+            }
+          }
+        }
+      }"
+    idx=$((idx+1))
+  done
+
+  query+="
+    }
+  }"
+
+  # Execute GraphQL query with timeout
+  local gql_result
+  gql_result=$(run_with_timeout "$API_TIMEOUT" gh api graphql \
+    -f query="$query" 2>/dev/null || echo "__TIMEOUT__")
+
+  if [[ "$gql_result" == "__TIMEOUT__" ]]; then
+    return 1
+  fi
+
+  # Parse GraphQL response and populate results associative array
+  # Format: results[SHA]="state|check_data"
+  idx=0
+  for sha in "${_shas[@]}"; do
+    local commit_data
+    commit_data=$(echo "$gql_result" | jq -r ".data.repository.commit${idx} // empty" 2>/dev/null)
+
+    if [[ -z "$commit_data" || "$commit_data" == "null" ]]; then
+      # No data for this commit, mark as unknown
+      _results["$sha"]="UNKNOWN|"
+      idx=$((idx+1))
+      continue
+    fi
+
+    local rollup_state
+    local check_details
+
+    # Try statusCheckRollup first (preferred, has aggregated state)
+    rollup_state=$(echo "$commit_data" | jq -r '.statusCheckRollup.state // empty' 2>/dev/null)
+
+    if [[ -n "$rollup_state" && "$rollup_state" != "null" ]]; then
+      # statusCheckRollup available, use it
+      check_details=$(echo "$commit_data" | jq -r '
+        .statusCheckRollup.contexts.nodes[]? |
+        if .name then
+          "\(.name)\t\(.status // "")\t\(.conclusion // "")"
+        elif .context then
+          "\(.context)\t\(.state)\t"
+        else
+          empty
+        fi' 2>/dev/null || echo "")
+    else
+      # Fallback to checkSuites when statusCheckRollup is null
+      rollup_state="UNKNOWN"
+      check_details=$(echo "$commit_data" | jq -r '
+        .checkSuites.nodes[]?.checkRuns.nodes[]? |
+        "\(.name)\t\(.status // "")\t\(.conclusion // "")"' 2>/dev/null || echo "")
+
+      # If we have check details from checkSuites, derive state from them
+      if [[ -n "$check_details" ]]; then
+        # Analyze check runs to determine overall state
+        local has_failure has_pending has_success
+        has_failure=$(echo "$check_details" | grep -i "FAILURE\|ACTION_REQUIRED\|TIMED_OUT" || true)
+        has_pending=$(echo "$check_details" | grep -i "QUEUED\|IN_PROGRESS\|PENDING" || true)
+        has_success=$(echo "$check_details" | grep -i "SUCCESS" || true)
+
+        if [[ -n "$has_failure" ]]; then
+          rollup_state="FAILURE"
+        elif [[ -n "$has_pending" ]]; then
+          rollup_state="PENDING"
+        elif [[ -n "$has_success" ]]; then
+          rollup_state="SUCCESS"
+        fi
+      fi
+    fi
+
+    _results["$sha"]="${rollup_state}|${check_details}"
+    idx=$((idx+1))
+  done
+
+  return 0
+}
+
+
 run_once() {
   INDEX=0
   declare -A LINE_MAP
@@ -271,10 +394,24 @@ run_once() {
     SPINNER_PID=$!
   fi
 
-  pids=()
+  # Collect all SHAs for batch GraphQL query
+  declare -a SHA_ARRAY
+  for i in $(seq 0 $((TOTAL-1))); do
+    SHA_ARRAY+=("${SHA_MAP[$i]}")
+  done
+
+  # Fetch all check runs via GraphQL batch query
+  declare -A GRAPHQL_RESULTS
+  if ! fetch_check_runs_graphql SHA_ARRAY GRAPHQL_RESULTS; then
+    echo "Error: Failed to fetch check runs via GraphQL API" >&2
+    exit 1
+  fi
+
+  # Process results for each commit
   for i in $(seq 0 $((TOTAL-1))); do
     SHA="${SHA_MAP[$i]}"
-    # Cache hit: if commit is cached success and not showing checks and --no-cache not set, skip API
+
+    # Cache hit: if commit is cached success and not showing checks and --no-cache not set, skip processing
     if [[ -n "${SUCCESS_CACHE[$SHA]:-}" && "$SHOW_CHECKS" != "1" && "$NO_CACHE" != "1" ]]; then
       if [[ "$CACHE_DEBUG" == "1" ]]; then
         echo "[cache hit] $SHA" >&2
@@ -283,17 +420,27 @@ run_once() {
       echo 1 >> "$TMPDIR/.done"
       continue
     fi
-    (
-      RAW_LINES=$(run_with_timeout "$API_TIMEOUT" gh api "/repos/$OWNER/$REPO/commits/$SHA/check-runs" --jq '.check_runs[] | [.name, (.status // ""), (.conclusion // "" )] | @tsv' 2>/dev/null || true)
-      success_count=0; fail_count=0; cancel_count=0; pending_count=0; other_count=0; total_count=0
-      DETAIL_OUTPUT=""
-      if [[ -n "$RAW_LINES" && "$RAW_LINES" != "__TIMEOUT__" ]]; then
-        while IFS=$'\t' read -r NAME STATUS CONCLUSION; do
-          total_count=$((total_count+1))
-          ICON_RUN=""
-          if [[ -z "$CONCLUSION" && "$STATUS" != "completed" ]]; then
-            ICON_RUN="🕓"; pending_count=$((pending_count+1))
-          elif [[ "$CONCLUSION" == "success" ]]; then
+
+    # Parse GraphQL result for this commit
+    RESULT_DATA="${GRAPHQL_RESULTS[$SHA]:-UNKNOWN|}"
+    IFS='|' read -r ROLLUP_STATE CHECK_DATA <<< "$RESULT_DATA"
+
+    success_count=0; fail_count=0; cancel_count=0; pending_count=0; other_count=0; total_count=0
+    DETAIL_OUTPUT=""
+
+    # Process individual check runs if data available
+    if [[ -n "$CHECK_DATA" ]]; then
+      while IFS=$'\t' read -r NAME STATUS CONCLUSION; do
+        [[ -z "$NAME" ]] && continue
+        total_count=$((total_count+1))
+        ICON_RUN=""
+
+        # Map GraphQL states to icons
+        # For CheckRun: status (queued/in_progress/completed) + conclusion (success/failure/etc)
+        # For StatusContext: state (pending/success/failure/error)
+        if [[ -n "$CONCLUSION" ]]; then
+          # CheckRun with conclusion
+          if [[ "$CONCLUSION" == "success" ]]; then
             ICON_RUN="✅"; success_count=$((success_count+1))
           elif [[ "$CONCLUSION" =~ ^(failure|timed_out|action_required)$ ]]; then
             ICON_RUN="❌"; fail_count=$((fail_count+1))
@@ -304,49 +451,75 @@ run_once() {
           else
             ICON_RUN="❔"; other_count=$((other_count+1))
           fi
-          if [[ "$SHOW_CHECKS" == "1" ]]; then
-            SHORT_NAME="$NAME"
-            [[ ${#SHORT_NAME} -gt 40 ]] && SHORT_NAME="${SHORT_NAME:0:37}..."
-            DETAIL_OUTPUT+="    • $ICON_RUN $SHORT_NAME ($STATUS${CONCLUSION:+/$CONCLUSION})\n"
+        elif [[ -n "$STATUS" ]]; then
+          # CheckRun without conclusion or StatusContext
+          if [[ "$STATUS" =~ ^(queued|in_progress|pending)$ ]]; then
+            ICON_RUN="🕓"; pending_count=$((pending_count+1))
+          elif [[ "$STATUS" == "success" ]]; then
+            ICON_RUN="✅"; success_count=$((success_count+1))
+          elif [[ "$STATUS" =~ ^(failure|error)$ ]]; then
+            ICON_RUN="❌"; fail_count=$((fail_count+1))
+          else
+            ICON_RUN="❔"; other_count=$((other_count+1))
           fi
-        done <<<"$RAW_LINES"
-      fi
-      OVERALL_ICON="❔"
-      if [[ "$RAW_LINES" == "__TIMEOUT__" ]]; then
-        OVERALL_ICON="⏲"
-      fi
-      if [[ $fail_count -gt 0 ]]; then
-        OVERALL_ICON="❌"
-      elif [[ $pending_count -gt 0 ]]; then
-        OVERALL_ICON="🕓"
-      elif [[ $cancel_count -gt 0 ]]; then
-        OVERALL_ICON="🚫"
-      elif [[ $success_count -gt 0 && $fail_count -eq 0 ]]; then
-        OVERALL_ICON="✅"
-      fi
-      {
-        echo "$OVERALL_ICON  ${LINE_MAP[$i]}"
-        if [[ "$SHOW_CHECKS" == "1" && -n "$DETAIL_OUTPUT" ]]; then
-          printf "%b" "$DETAIL_OUTPUT"
+        else
+          ICON_RUN="❔"; other_count=$((other_count+1))
         fi
-      } > "$TMPDIR/$i"
-      # Cache store: only add if overall success and not from timeout
-      if [[ "$OVERALL_ICON" == "✅" && "$RAW_LINES" != "__TIMEOUT__" ]]; then
-        # Append SHA and timestamp if not already present
-        if [[ -z "${SUCCESS_CACHE[$SHA]:-}" ]]; then
-          echo -e "$SHA\t$NOW_EPOCH" >> "$CACHE_FILE"
+
+        if [[ "$SHOW_CHECKS" == "1" ]]; then
+          SHORT_NAME="$NAME"
+          [[ ${#SHORT_NAME} -gt 40 ]] && SHORT_NAME="${SHORT_NAME:0:37}..."
+          DETAIL_OUTPUT+="    • $ICON_RUN $SHORT_NAME ($STATUS${CONCLUSION:+/$CONCLUSION})\n"
         fi
-      fi
-      echo 1 >> "$TMPDIR/.done"
-    ) &
-    pids+=($!)
-    if [[ ${#pids[@]} -ge $CONCURRENCY ]]; then
-      wait "${pids[0]}" 2>/dev/null || true
-      pids=("${pids[@]:1}")
+      done <<< "$CHECK_DATA"
     fi
-  done
-  for pid in "${pids[@]}"; do
-    wait "$pid" 2>/dev/null || true
+
+    # Determine overall icon based on rollup state and individual counts
+    OVERALL_ICON="❔"
+    case "$ROLLUP_STATE" in
+      SUCCESS)
+        OVERALL_ICON="✅"
+        ;;
+      FAILURE|ERROR)
+        OVERALL_ICON="❌"
+        ;;
+      PENDING)
+        OVERALL_ICON="🕓"
+        ;;
+      EXPECTED)
+        # EXPECTED means checks are expected but not yet run
+        OVERALL_ICON="🕓"
+        ;;
+      *)
+        # Fallback to count-based logic if rollup state is unknown
+        if [[ $fail_count -gt 0 ]]; then
+          OVERALL_ICON="❌"
+        elif [[ $pending_count -gt 0 ]]; then
+          OVERALL_ICON="🕓"
+        elif [[ $cancel_count -gt 0 ]]; then
+          OVERALL_ICON="🚫"
+        elif [[ $success_count -gt 0 && $fail_count -eq 0 ]]; then
+          OVERALL_ICON="✅"
+        fi
+        ;;
+    esac
+
+    {
+      echo "$OVERALL_ICON  ${LINE_MAP[$i]}"
+      if [[ "$SHOW_CHECKS" == "1" && -n "$DETAIL_OUTPUT" ]]; then
+        printf "%b" "$DETAIL_OUTPUT"
+      fi
+    } > "$TMPDIR/$i"
+
+    # Cache store: only add if overall success
+    if [[ "$OVERALL_ICON" == "✅" ]]; then
+      # Append SHA and timestamp if not already present
+      if [[ -z "${SUCCESS_CACHE[$SHA]:-}" ]]; then
+        echo -e "$SHA\t$NOW_EPOCH" >> "$CACHE_FILE"
+      fi
+    fi
+
+    echo 1 >> "$TMPDIR/.done"
   done
 
   COMPLETED=$TOTAL
