@@ -15,7 +15,6 @@ Usage:
  Options:
    --branch <name>        Branch to inspect (alternative to positional <branch>)
    --limit, -n <n>        Number of commits to display (default: 15; env LOG_CI_LIMIT overrides)
-   --concurrency, -c <n>  Max parallel API calls (default: 4; env LOG_CI_CONCURRENCY overrides)
    --checks, -C           Show per-check run summaries beneath each commit (env LOG_CI_SHOW_CHECKS=1)
    --no-spinner           Disable loading spinner (env LOG_CI_NO_SPINNER=1)
    --api-timeout <secs>   Max seconds per API request (default: 30; env LOG_CI_API_TIMEOUT)
@@ -35,7 +34,7 @@ Examples:
   gh log-ci                                  # auto-detect branch
   gh log-ci main                             # explicit positional branch
   gh log-ci --branch develop --limit 30
-  gh log-ci -c 8 -n 50                       # increase parallelism and number of commits
+  gh log-ci -n 50                            # show 50 commits
   LOG_CI_SHOW_CHECKS=1 gh log-ci -n 10       # show per-check summaries (env)
   gh log-ci -C --limit 5                     # show per-check summaries (flag)
   gh log-ci --watch                          # watch mode (poll every 10s)
@@ -55,7 +54,6 @@ EOF
 # Default values (can be overridden by env or flags)
 USER_BRANCH=""
 LIMIT="${LOG_CI_LIMIT:-15}"
-CONCURRENCY="${LOG_CI_CONCURRENCY:-4}"
 SHOW_CHECKS="${LOG_CI_SHOW_CHECKS:-0}"
 NO_SPINNER="${LOG_CI_NO_SPINNER:-0}"
 API_TIMEOUT="${LOG_CI_API_TIMEOUT:-30}"
@@ -75,9 +73,6 @@ while [[ $# -gt 0 ]]; do
       ;;
     --limit|-n)
       LIMIT="${2:-}"; shift || true
-      ;;
-    --concurrency|-c)
-      CONCURRENCY="${2:-}"; shift || true
       ;;
     --checks|-C)
       SHOW_CHECKS=1
@@ -126,10 +121,6 @@ fi
 # Validate numeric inputs
 if ! [[ "$LIMIT" =~ ^[0-9]+$ ]] || [[ "$LIMIT" -le 0 ]]; then
   echo "Error: --limit must be a positive integer (got '$LIMIT')." >&2
-  exit 1
-fi
-if ! [[ "$CONCURRENCY" =~ ^[0-9]+$ ]] || [[ "$CONCURRENCY" -le 0 ]]; then
-  echo "Error: --concurrency must be a positive integer (got '$CONCURRENCY')." >&2
   exit 1
 fi
 if ! [[ "$API_TIMEOUT" =~ ^[0-9]+$ ]] || [[ "$API_TIMEOUT" -le 0 ]]; then

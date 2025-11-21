@@ -76,7 +76,6 @@ make run
 ## Environment Variables
 
 - `LOG_CI_LIMIT`: Number of commits to display (default: 15)
-- `LOG_CI_CONCURRENCY`: Parallel API calls (default: 4)
 - `LOG_CI_SHOW_CHECKS`: Show per-check run summaries (default: 0)
 - `LOG_CI_NO_SPINNER`: Disable loading spinner (default: 0)
 - `LOG_CI_API_TIMEOUT`: Max seconds per API request (default: 30)

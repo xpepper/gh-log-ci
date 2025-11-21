@@ -29,7 +29,6 @@ gh log-ci
 ```
   --branch <name>        Use a specific branch (overrides auto-detect)
   --limit, -n <n>        Number of commits to display (default: 15; env LOG_CI_LIMIT)
-  --concurrency, -c <n>  Parallel API calls (default: 4; env LOG_CI_CONCURRENCY)
   --checks, -C           Show per-check run summaries
   --no-spinner           Disable loading spinner (env LOG_CI_NO_SPINNER=1)
   --api-timeout <secs>   Max seconds per API request (default: 30; env LOG_CI_API_TIMEOUT)
@@ -154,7 +153,6 @@ gh auth login
 - Accessibility: `--no-emoji`, `--no-color` respecting `NO_COLOR`.
 - Rate-limit handling with backoff + user notice.
 - Commit age column (e.g., `2h ago`).
-- GraphQL batch query to reduce API calls: use a single GraphQL batch query to fetch all check suite statuses.
 - Implement the queued vs in_progress distinction next (would be a minor version bump)
 - Replace temp files with mkfifo or captured descriptors for even less I/O (micro-optimization).
 - Workflow names and URLs (opt-in with a flag).
