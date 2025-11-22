@@ -29,7 +29,6 @@ gh log-ci
 ```
   --branch <name>        Use a specific branch (overrides auto-detect)
   --limit, -n <n>        Number of commits to display (default: 15; env LOG_CI_LIMIT)
-  --concurrency, -c <n>  Parallel API calls (default: 4; env LOG_CI_CONCURRENCY)
   --checks, -C           Show per-check run summaries
   --no-spinner           Disable loading spinner (env LOG_CI_NO_SPINNER=1)
   --api-timeout <secs>   Max seconds per API request (default: 30; env LOG_CI_API_TIMEOUT)
@@ -129,7 +128,7 @@ gh auth login
 1. Determines branch (see order above).
 2. Fetches commits from `origin/<branch>`.
 3. Emits a tab-delimited `git log` for the last 15 commits.
-4. For each commit, calls REST endpoint `/repos/{owner}/{repo}/commits/{sha}/check-runs`.
+4. Makes a single GraphQL batch query to fetch all commit check statuses at once using the `statusCheckRollup` field.
 5. Maps combined conclusions to an icon and prints decorated line.
 
 ## Configuration (Current)
@@ -144,17 +143,16 @@ gh auth login
 - Cache bypass: `--no-cache` to force fresh API calls for all commits.
 
 ## Limitations
-- One REST API call per commit (future: GraphQL batch).
 - Per-check summaries increase output size (consider piping/grep).
 - Neutral/skipped/stale checks don't affect overall icon yet.
 - No JSON / alternative formats yet.
 - Assumes `origin` remote name.
 
 ## Roadmap
+- ~~GraphQL batch query to reduce API calls~~ ✅ **Completed in v0.6.0**
 - Accessibility: `--no-emoji`, `--no-color` respecting `NO_COLOR`.
 - Rate-limit handling with backoff + user notice.
 - Commit age column (e.g., `2h ago`).
-- GraphQL batch query to reduce API calls: use a single GraphQL batch query to fetch all check suite statuses.
 - Implement the queued vs in_progress distinction next (would be a minor version bump)
 - Replace temp files with mkfifo or captured descriptors for even less I/O (micro-optimization).
 - Workflow names and URLs (opt-in with a flag).
@@ -223,6 +221,7 @@ Early MVP; expect changes as features mature.
 
 | Version | Date | Notes |
 |---------|------|-------|
+| 0.6.0 | 2025-11-19 | GraphQL batch query replaces REST API; single API call fetches all commit statuses at once |
 | 0.5.0 | 2025-11-04 | Add --no-cache flag to bypass success cache and force fresh API calls |
 | 0.4.1 | 2025-10-23 | Success-only caching (TTL, dir config, debug env) skips API calls for cached successes |
 | 0.4.0 | 2025-10-22 | Watch mode (`--watch`, `--watch-interval`); refactored core for repeated polling |
