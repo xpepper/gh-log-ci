@@ -6,9 +6,10 @@ gh-log-ci is a GitHub CLI extension that displays CI status next to commit logs.
 
 ## Architecture
 
-- **Single Bash script**: The entire functionality is in `gh-log-ci` (lines 1-517)
-- **GitHub GraphQL API integration**: Uses `gh api graphql` to batch fetch check runs for all commits
+- **Single Bash script**: The entire functionality is in `gh-log-ci` (lines 1-378)
+- **GitHub API integration**: Uses `gh api` to fetch check runs for each commit
 - **Caching system**: Success-only caching with TTL to reduce API calls
+- **Parallel processing**: Configurable concurrency for API calls
 - **Watch mode**: Continuous polling with configurable intervals
 
 ## Development Workflow
@@ -56,10 +57,10 @@ make run
 - **Argument parsing**: Lines 70-119 handle CLI flags and environment variables
 - **Branch detection**: Lines 146-162 auto-detect branch using GitHub API and git fallbacks
 - **Remote URL parsing**: Lines 171-179 extract owner/repo from GitHub URLs
-- **GraphQL batch query**: Lines 217-302 fetch all commit check statuses in a single API call
-- **Cache management**: Lines 322-336 read cache, lines 441-447 write cache
-- **Status processing**: Lines 361-465 process GraphQL results and map statuses to emoji icons
-- **Watch mode**: Lines 475-488 implement continuous polling
+- **Cache management**: Lines 234-248 read cache, lines 334-338 write cache
+- **Parallel processing**: Lines 274-350 handle concurrent API calls with configurable limits
+- **Status mapping**: Lines 290-326 map GitHub check statuses to emoji icons
+- **Watch mode**: Lines 365-378 implement continuous polling
 
 ### Caching System
 - **Success-only caching**: Only caches successful commits (line 334)
@@ -76,6 +77,7 @@ make run
 ## Environment Variables
 
 - `LOG_CI_LIMIT`: Number of commits to display (default: 15)
+- `LOG_CI_CONCURRENCY`: Parallel API calls (default: 4)
 - `LOG_CI_SHOW_CHECKS`: Show per-check run summaries (default: 0)
 - `LOG_CI_NO_SPINNER`: Disable loading spinner (default: 0)
 - `LOG_CI_API_TIMEOUT`: Max seconds per API request (default: 30)
