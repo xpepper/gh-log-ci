@@ -57,13 +57,15 @@ make run
 - **Argument parsing**: Lines 70-119 handle CLI flags and environment variables
 - **Branch detection**: Lines 146-162 auto-detect branch using GitHub API and git fallbacks
 - **Remote URL parsing**: Lines 171-179 extract owner/repo from GitHub URLs
-- **Cache management**: Lines 234-248 read cache, lines 334-338 write cache
+- **Cache management**: Lines 234-248 read cache, lines 336-342 write cache with pending_count validation
 - **Parallel processing**: Lines 274-350 handle concurrent API calls with configurable limits
 - **Status mapping**: Lines 290-326 map GitHub check statuses to emoji icons
 - **Watch mode**: Lines 365-378 implement continuous polling
 
 ### Caching System
-- **Success-only caching**: Only caches successful commits (line 334)
+- **Success-only caching**: Only caches successful commits (line 336)
+- **Cache validation**: Requires all three conditions: `OVERALL_ICON=="✅"` AND `RAW_LINES!="__TIMEOUT__"` AND `pending_count==0`
+- **Pending check exclusion**: Commits with ANY pending check runs are never cached (prevents incorrect success icon display)
 - **TTL-based**: Configurable cache lifetime (default 24 hours)
 - **Cache directory**: `~/.cache/gh-log-ci/` or configurable via `LOG_CI_CACHE_DIR`
 - **Cache bypass**: `--no-cache` flag forces fresh API calls
@@ -73,6 +75,7 @@ make run
 - **cache_success.bats**: Tests caching functionality
 - **timeout.bats**: Tests API timeout handling
 - **watch_flags.bats**: Tests watch mode functionality
+- **pending_icon.bats**: Tests pending status display and cache validation (prevents bug where pending builds showed ✅)
 
 ## Environment Variables
 
