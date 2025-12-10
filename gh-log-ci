@@ -3,7 +3,7 @@
 set -euo pipefail
 
 PROGRAM="gh log-ci"
-VERSION="0.5.0"
+VERSION="0.6.0"
 
 show_help() {
   cat <<'EOF'
@@ -330,8 +330,10 @@ run_once() {
           printf "%b" "$DETAIL_OUTPUT"
         fi
       } > "$TMPDIR/$i"
-      # Cache store: only add if overall success and not from timeout
-      if [[ "$OVERALL_ICON" == "✅" && "$RAW_LINES" != "__TIMEOUT__" ]]; then
+      # Persist raw metadata for post-processing (blocked queued detection)
+      echo -n "$RAW_LINES" > "$TMPDIR/meta_$i"
+      # Cache store: only add if overall success and not from timeout and no pending checks
+      if [[ "$OVERALL_ICON" == "✅" && "$RAW_LINES" != "__TIMEOUT__" && $pending_count -eq 0 ]]; then
         # Append SHA and timestamp if not already present
         if [[ -z "${SUCCESS_CACHE[$SHA]:-}" ]]; then
           echo -e "$SHA\t$NOW_EPOCH" >> "$CACHE_FILE"
@@ -355,6 +357,42 @@ run_once() {
     wait "$SPINNER_PID" 2>/dev/null || true
     printf "\r%-60s\r" ""
   fi
+  # Build map of in-progress workflow/check names
+  declare -A INPROGRESS_NAMES
+  for i in $(seq 0 $((TOTAL-1))); do
+    if [[ -f "$TMPDIR/meta_$i" ]]; then
+      while IFS=$'\t' read -r M_NAME M_STATUS M_CONCLUSION; do
+        if [[ -z "$M_CONCLUSION" && "$M_STATUS" == "in_progress" ]]; then
+          INPROGRESS_NAMES["$M_NAME"]=1
+        fi
+      done < "$TMPDIR/meta_$i"
+    fi
+  done
+  # Second pass: detect blocked queued runs (queued while same name in progress elsewhere)
+  for i in $(seq 0 $((TOTAL-1))); do
+    blocked_commit=0
+    has_pending_icon=0
+    if [[ -f "$TMPDIR/meta_$i" ]]; then
+      while IFS=$'\t' read -r M_NAME M_STATUS M_CONCLUSION; do
+        if [[ -z "$M_CONCLUSION" && "$M_STATUS" != "completed" ]]; then
+          has_pending_icon=1
+        fi
+        if [[ -z "$M_CONCLUSION" && "$M_STATUS" == "queued" && -n "${INPROGRESS_NAMES[$M_NAME]:-}" ]]; then
+          blocked_commit=1; break
+        fi
+      done < "$TMPDIR/meta_$i"
+    fi
+    if [[ $blocked_commit -eq 1 && $has_pending_icon -eq 1 ]]; then
+      if [[ -f "$TMPDIR/$i" ]]; then
+        FIRST_CHAR=$(head -c 4 "$TMPDIR/$i")
+        # Replace leading pending icon (🕓) with blocked icon (🔁) only if currently pending overall
+        if [[ "$FIRST_CHAR" == "🕓"* ]]; then
+          LINE_CONTENT=$(cat "$TMPDIR/$i")
+          echo "🔁${LINE_CONTENT:4}" > "$TMPDIR/$i"
+        fi
+      fi
+    fi
+  done
   for i in $(seq 0 $((TOTAL-1))); do
     cat "$TMPDIR/$i" 2>/dev/null || echo "❔  ${LINE_MAP[$i]}"
   done
