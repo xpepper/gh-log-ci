@@ -332,8 +332,8 @@ run_once() {
       } > "$TMPDIR/$i"
       # Persist raw metadata for post-processing (blocked queued detection)
       echo -n "$RAW_LINES" > "$TMPDIR/meta_$i"
-      # Cache store: only add if overall success and not from timeout
-      if [[ "$OVERALL_ICON" == "✅" && "$RAW_LINES" != "__TIMEOUT__" ]]; then
+      # Cache store: only add if overall success and not from timeout and no pending checks
+      if [[ "$OVERALL_ICON" == "✅" && "$RAW_LINES" != "__TIMEOUT__" && $pending_count -eq 0 ]]; then
         # Append SHA and timestamp if not already present
         if [[ -z "${SUCCESS_CACHE[$SHA]:-}" ]]; then
           echo -e "$SHA\t$NOW_EPOCH" >> "$CACHE_FILE"
