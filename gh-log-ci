@@ -3,7 +3,7 @@
 set -euo pipefail
 
 PROGRAM="gh log-ci"
-VERSION="0.6.0"
+VERSION="0.6.1"
 
 show_help() {
   cat <<'EOF'
@@ -291,18 +291,44 @@ run_once() {
         while IFS=$'\t' read -r NAME STATUS CONCLUSION; do
           total_count=$((total_count+1))
           ICON_RUN=""
+
+          # Determine if this check should count toward overall status
+          # GitHub UI typically ignores certain administrative checks like Dependabot
+          SKIP_OVERALL_STATUS=0
+          if [[ "$NAME" =~ ^(Dependabot|dependabot) ]]; then
+            SKIP_OVERALL_STATUS=1
+          fi
+
           if [[ -z "$CONCLUSION" && "$STATUS" != "completed" ]]; then
-            ICON_RUN="🕓"; pending_count=$((pending_count+1))
+            ICON_RUN="🕓";
+            if [[ $SKIP_OVERALL_STATUS -eq 0 ]]; then
+              pending_count=$((pending_count+1))
+            fi
           elif [[ "$CONCLUSION" == "success" ]]; then
-            ICON_RUN="✅"; success_count=$((success_count+1))
+            ICON_RUN="✅";
+            if [[ $SKIP_OVERALL_STATUS -eq 0 ]]; then
+              success_count=$((success_count+1))
+            fi
           elif [[ "$CONCLUSION" =~ ^(failure|timed_out|action_required)$ ]]; then
-            ICON_RUN="❌"; fail_count=$((fail_count+1))
+            ICON_RUN="❌";
+            if [[ $SKIP_OVERALL_STATUS -eq 0 ]]; then
+              fail_count=$((fail_count+1))
+            fi
           elif [[ "$CONCLUSION" == "cancelled" ]]; then
-            ICON_RUN="🚫"; cancel_count=$((cancel_count+1))
+            ICON_RUN="🚫";
+            if [[ $SKIP_OVERALL_STATUS -eq 0 ]]; then
+              cancel_count=$((cancel_count+1))
+            fi
           elif [[ "$CONCLUSION" =~ ^(neutral|skipped|stale)$ ]]; then
-            ICON_RUN="➖"; other_count=$((other_count+1))
+            ICON_RUN="➖";
+            if [[ $SKIP_OVERALL_STATUS -eq 0 ]]; then
+              other_count=$((other_count+1))
+            fi
           else
-            ICON_RUN="❔"; other_count=$((other_count+1))
+            ICON_RUN="❔";
+            if [[ $SKIP_OVERALL_STATUS -eq 0 ]]; then
+              other_count=$((other_count+1))
+            fi
           fi
           if [[ "$SHOW_CHECKS" == "1" ]]; then
             SHORT_NAME="$NAME"
