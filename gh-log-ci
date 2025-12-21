@@ -3,7 +3,7 @@
 set -euo pipefail
 
 PROGRAM="gh log-ci"
-VERSION="0.6.3"
+VERSION="0.7.1"
 
 show_help() {
   cat <<'EOF'
@@ -284,51 +284,22 @@ run_once() {
       continue
     fi
     (
-      # Fetch check runs with timing information for smarter filtering
-      RAW_LINES=$(run_with_timeout "$API_TIMEOUT" gh api "/repos/$OWNER/$REPO/commits/$SHA/check-runs" --jq '.check_runs[] | [.name, (.status // ""), (.conclusion // ""), (.started_at // "")] | @tsv' 2>/dev/null || true)
+      # Fetch check runs data
+      RAW_LINES=$(run_with_timeout "$API_TIMEOUT" gh api "/repos/$OWNER/$REPO/commits/$SHA/check-runs" --jq '.check_runs[] | [.name, (.status // ""), (.conclusion // "")] | @tsv' 2>/dev/null || true)
       success_count=0; fail_count=0; cancel_count=0; pending_count=0; other_count=0; total_count=0
       DETAIL_OUTPUT=""
       if [[ -n "$RAW_LINES" && "$RAW_LINES" != "__TIMEOUT__" ]]; then
-        while IFS=$'\t' read -r NAME STATUS CONCLUSION STARTED_AT; do
+        while IFS=$'\t' read -r NAME STATUS CONCLUSION; do
           total_count=$((total_count+1))
           ICON_RUN=""
 
           # Determine if this check should count toward overall status
-          # GitHub UI typically ignores certain administrative/maintenance checks
+          # Use simple filtering based on known problematic patterns
           SKIP_OVERALL_STATUS=0
 
-          # Pattern-based filtering for known administrative checks
-          if [[ "$NAME" =~ ^(dependabot|dependabot.*|codeql|code scanning|license.*|security.*|cleanup.*|record.*|publish.*|verify pact.*|Verify Pact.*) ]]; then
+          # Skip known async/background workflows
+          if [[ "$NAME" =~ ^(dependabot|dependabot.*|Dependabot|Verify Pact.*|Record Deployment|cleanup-.*|publish-.*) ]]; then
             SKIP_OVERALL_STATUS=1
-          fi
-
-          # Time-based filtering: ignore checks that start too far before or after commit
-          # This catches async/background jobs that run on schedules rather than code triggers
-          # and pre-merge/periodic jobs that aren't directly related to the specific commit
-          if [[ $SKIP_OVERALL_STATUS -eq 0 && -n "$STARTED_AT" && "$STARTED_AT" != "null" ]]; then
-            # Get commit timestamp in seconds since epoch
-            COMMIT_TIME=$(git show --format="%ct" --no-patch "$SHA" 2>/dev/null || echo 0)
-
-            # Parse ISO 8601 timestamp and convert to epoch
-            if command -v date >/dev/null 2>&1; then
-              # Try macOS date command first
-              if date -j -f "%Y-%m-%dT%H:%M:%SZ" "$STARTED_AT" +%s >/dev/null 2>&1; then
-                CHECK_TIME=$(date -j -f "%Y-%m-%dT%H:%M:%SZ" "$STARTED_AT" +%s)
-              else
-                # Try GNU date command
-                CHECK_TIME=$(date -d "$STARTED_AT" +%s 2>/dev/null || echo 0)
-              fi
-            else
-              CHECK_TIME=0
-            fi
-
-            # If check started more than 30 minutes (1800 seconds) after OR before commit, ignore it
-            if [[ $COMMIT_TIME -gt 0 && $CHECK_TIME -gt 0 ]]; then
-              TIME_DIFF=$((CHECK_TIME - COMMIT_TIME))
-              if [[ $TIME_DIFF -gt 1800 || $TIME_DIFF -lt -1800 ]]; then
-                SKIP_OVERALL_STATUS=1
-              fi
-            fi
           fi
 
           if [[ -z "$CONCLUSION" && "$STATUS" != "completed" ]]; then
