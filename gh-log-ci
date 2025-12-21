@@ -3,7 +3,7 @@
 set -euo pipefail
 
 PROGRAM="gh log-ci"
-VERSION="0.6.2"
+VERSION="0.6.3"
 
 show_help() {
   cat <<'EOF'
@@ -298,12 +298,13 @@ run_once() {
           SKIP_OVERALL_STATUS=0
 
           # Pattern-based filtering for known administrative checks
-          if [[ "$NAME" =~ ^(dependabot|dependabot.*|codeql|code scanning|license.*|security.*|cleanup.*|record.*|publish.*) ]]; then
+          if [[ "$NAME" =~ ^(dependabot|dependabot.*|codeql|code scanning|license.*|security.*|cleanup.*|record.*|publish.*|verify pact.*|Verify Pact.*) ]]; then
             SKIP_OVERALL_STATUS=1
           fi
 
-          # Time-based filtering: ignore checks that start more than 30 minutes after commit
+          # Time-based filtering: ignore checks that start too far before or after commit
           # This catches async/background jobs that run on schedules rather than code triggers
+          # and pre-merge/periodic jobs that aren't directly related to the specific commit
           if [[ $SKIP_OVERALL_STATUS -eq 0 && -n "$STARTED_AT" && "$STARTED_AT" != "null" ]]; then
             # Get commit timestamp in seconds since epoch
             COMMIT_TIME=$(git show --format="%ct" --no-patch "$SHA" 2>/dev/null || echo 0)
@@ -321,10 +322,10 @@ run_once() {
               CHECK_TIME=0
             fi
 
-            # If check started more than 30 minutes (1800 seconds) after commit, ignore it
+            # If check started more than 30 minutes (1800 seconds) after OR before commit, ignore it
             if [[ $COMMIT_TIME -gt 0 && $CHECK_TIME -gt 0 ]]; then
               TIME_DIFF=$((CHECK_TIME - COMMIT_TIME))
-              if [[ $TIME_DIFF -gt 1800 ]]; then
+              if [[ $TIME_DIFF -gt 1800 || $TIME_DIFF -lt -1800 ]]; then
                 SKIP_OVERALL_STATUS=1
               fi
             fi
