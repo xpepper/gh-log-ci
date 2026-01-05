@@ -17,3 +17,4 @@ ci-bats-output.txt
 # User cache (success cache); path inside HOME, pattern for safety if copied locally
 gh-log-ci-cache/
 
+.claude/settings.local.json
