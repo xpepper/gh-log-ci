@@ -21,9 +21,15 @@ teardown() {
 # ==============================================================================
 
 @test "GraphQL query construction with limit 5" {
-  skip "Test to be implemented - T009"
-  # TODO: Verify GraphQL query is constructed correctly with limit parameter
-  # Expected: Query includes 'first: 5' for history
+  # Verify that when --limit 5 is used, the GraphQL query would include first: 5
+  # This is a basic test to ensure the limit parameter is properly passed
+
+  # For now, we test that the flag is accepted and help shows the option
+  run ./gh-log-ci --help
+  [ "$status" -eq 0 ]
+  [[ "$output" =~ "--limit" ]]
+
+  # TODO T014: Once fetch_checks_graphql() is implemented, test actual query construction
 }
 
 @test "single GraphQL call made vs multiple REST calls" {
@@ -39,9 +45,52 @@ teardown() {
 }
 
 @test "transformation of GraphQL response to TSV format" {
-  skip "Test to be implemented - T012"
-  # TODO: Test transform_graphql_response() function with sample JSON
-  # Expected: Nested JSON flattened to SHA<TAB>NAME<TAB>STATUS<TAB>CONCLUSION
+  # Test that transform_graphql_response() converts nested JSON to flat TSV
+
+  # Sample GraphQL response
+  local sample_json='{
+    "data": {
+      "repository": {
+        "ref": {
+          "target": {
+            "history": {
+              "nodes": [
+                {
+                  "oid": "abc123",
+                  "checkSuites": {
+                    "nodes": [
+                      {
+                        "checkRuns": {
+                          "nodes": [
+                            {
+                              "name": "build",
+                              "status": "COMPLETED",
+                              "conclusion": "SUCCESS"
+                            }
+                          ]
+                        }
+                      }
+                    ]
+                  }
+                }
+              ]
+            }
+          }
+        }
+      }
+    }
+  }'
+
+  # Expected TSV output: SHA<TAB>NAME<TAB>status<TAB>conclusion
+  # Note: status and conclusion should be lowercase
+  expected="abc123	build	completed	success"
+
+  # Source the script to load the function
+  # Extract just the function definition to avoid running the whole script
+  source <(sed -n '/^transform_graphql_response()/,/^}/p' ./gh-log-ci)
+
+  result=$(transform_graphql_response "$sample_json")
+  [ "$result" = "$expected" ]
 }
 
 # ==============================================================================

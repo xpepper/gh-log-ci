@@ -217,6 +217,78 @@ run_with_timeout() {
   rm -f "$_tmp_out" 2>/dev/null || true
 }
 
+# T014: Fetch check runs via GraphQL batch query
+fetch_checks_graphql() {
+  local owner="$1"
+  local repo="$2"
+  local branch="$3"
+  local limit="$4"
+
+  # shellcheck disable=SC2016  # GraphQL query uses literal $variables, not Bash variables
+  local query='
+query($owner: String!, $repo: String!, $branch: String!, $limit: Int!) {
+  repository(owner: $owner, name: $repo) {
+    ref(qualifiedName: $branch) {
+      target {
+        ... on Commit {
+          history(first: $limit) {
+            nodes {
+              oid
+              checkSuites(first: 100) {
+                nodes {
+                  checkRuns(first: 100) {
+                    nodes {
+                      name
+                      status
+                      conclusion
+                    }
+                  }
+                }
+              }
+            }
+          }
+        }
+      }
+    }
+  }
+}
+'
+
+  # Execute query with timeout
+  run_with_timeout "$API_TIMEOUT" gh api graphql \
+    -f query="$query" \
+    -f owner="$owner" \
+    -f repo="$repo" \
+    -f branch="refs/heads/$branch" \
+    -F limit="$limit" 2>&1
+}
+
+# T015: Transform GraphQL nested response to flat TSV format
+transform_graphql_response() {
+  local response="$1"
+
+  # Transform nested GraphQL JSON to flat TSV (SHA<TAB>NAME<TAB>status<TAB>conclusion)
+  jq -r '
+    .data.repository.ref.target.history.nodes[]? as $commit |
+    $commit.oid as $sha |
+    (
+      $commit.checkSuites.nodes[]? |
+      .checkRuns.nodes[]? |
+      [$sha, .name, (.status // "" | ascii_downcase), (.conclusion // "" | ascii_downcase)]
+    ) |
+    @tsv
+  ' <<< "$response" 2>/dev/null || true
+}
+
+# T016: Group TSV lines by commit SHA for aggregation
+group_by_sha() {
+  local tsv_data="$1"
+  local sha="$2"
+
+  # Extract lines for specific SHA
+  grep "^${sha}" <<< "$tsv_data" | cut -f2- || true
+}
+
 run_once() {
   INDEX=0
   declare -A LINE_MAP
