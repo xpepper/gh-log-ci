@@ -59,18 +59,18 @@
 
 ### Implementation for User Story 1
 
-- [ ] T014 [US1] Implement `fetch_checks_graphql()` function in gh-log-ci (insert after line ~220, before main loop)
-- [ ] T015 [P] [US1] Implement `transform_graphql_response()` function in gh-log-ci (use jq to flatten nested JSON to TSV)
-- [ ] T016 [US1] Implement `group_by_sha()` function in gh-log-ci (group TSV lines by commit SHA for aggregation)
-- [ ] T017 [US1] Add GraphQL code path to main loop in gh-log-ci (lines ~274-350): attempt GraphQL before REST
-- [ ] T018 [US1] Integrate GraphQL response with existing status aggregation logic (reuse lines ~289-326)
-- [ ] T019 [US1] Add timeout handling for GraphQL query using `run_with_timeout()` wrapper (existing function lines ~195-215)
-- [ ] T020 [US1] Handle case where GraphQL returns fewer commits than requested (accept partial results)
-- [ ] T021 [US1] Handle case where commit has no checkSuites (display ❔ icon)
-- [ ] T022 [US1] Verify `--checks` flag works with GraphQL response (per-check run details)
-- [ ] T023 [US1] Run `make test` - all tests including new GraphQL tests MUST pass
-- [ ] T024 [US1] Manual test: run `gh log-ci --limit 5` and verify single GraphQL call made
-- [ ] T025 [US1] Manual test: compare outputs `gh log-ci --limit 10` vs `gh log-ci --use-rest --limit 10` (should be identical)
+- [X] T014 [US1] Implement `fetch_checks_graphql()` function in gh-log-ci (insert after line ~220, before main loop)
+- [X] T015 [P] [US1] Implement `transform_graphql_response()` function in gh-log-ci (use jq to flatten nested JSON to TSV)
+- [X] T016 [US1] Implement `group_by_sha()` function in gh-log-ci (group TSV lines by commit SHA for aggregation)
+- [X] T017 [US1] Add GraphQL code path to main loop in gh-log-ci (lines ~274-350): attempt GraphQL before REST
+- [X] T018 [US1] Integrate GraphQL response with existing status aggregation logic (reuse lines ~289-326)
+- [X] T019 [US1] Add timeout handling for GraphQL query using `run_with_timeout()` wrapper (existing function lines ~195-215)
+- [X] T020 [US1] Handle case where GraphQL returns fewer commits than requested (accept partial results)
+- [X] T021 [US1] Handle case where commit has no checkSuites (display ❔ icon)
+- [X] T022 [US1] Verify `--checks` flag works with GraphQL response (per-check run details)
+- [X] T023 [US1] Run `make test` - all tests including new GraphQL tests MUST pass
+- [X] T024 [US1] Manual test: run `gh log-ci --limit 5` and verify single GraphQL call made
+- [X] T025 [US1] Manual test: compare outputs `gh log-ci --limit 10` vs `gh log-ci --use-rest --limit 10` (should be identical)
 - [ ] T026 [US1] Update README.md: remove "One REST API call per commit" from Limitations section (line ~146)
 - [ ] T027 [US1] Update README.md: add GraphQL batch query to Features section (line ~88)
 - [ ] T028 [US1] Update AGENTS.md: document GraphQL architecture and query structure (line ~50)
