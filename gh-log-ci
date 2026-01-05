@@ -3,7 +3,7 @@
 set -euo pipefail
 
 PROGRAM="gh log-ci"
-VERSION="0.6.0"
+VERSION="0.7.0"
 
 show_help() {
   cat <<'EOF'
@@ -22,9 +22,7 @@ Usage:
    --watch                Continuously poll and update commit statuses
    --watch-interval <s>   Seconds between polls in watch mode (default: 10; env LOG_CI_WATCH_INTERVAL)
    --no-cache             Ignore success cache, force fresh API calls for all commits
-   --help, -h             Show this help text
-   --version              Show version
-
+  --use-rest             Force REST API mode, bypass GraphQL (env LOG_CI_FORCE_REST=1)
 Branch auto-detect order when <branch> not supplied:
   1. GitHub default branch (via gh repo view)
   2. master (if exists)
@@ -65,6 +63,7 @@ CACHE_TTL="${LOG_CI_CACHE_TTL:-86400}" # seconds (default 24h)
 CACHE_DIR="${LOG_CI_CACHE_DIR:-$HOME/.cache/gh-log-ci}"
 CACHE_DEBUG="${LOG_CI_CACHE_DEBUG:-0}"
 NO_CACHE=0
+USE_REST="${LOG_CI_FORCE_REST:-0}"
 
 # Parse flags
 POS_ARGS=()
@@ -96,6 +95,10 @@ while [[ $# -gt 0 ]]; do
       ;;
     --no-cache)
       NO_CACHE=1
+      ;;
+    --use-rest)
+      # shellcheck disable=SC2034  # Used in main loop (Phase 3 implementation)
+      USE_REST=1
       ;;
     -h|--help)
       show_help; exit 0
@@ -214,6 +217,78 @@ run_with_timeout() {
   rm -f "$_tmp_out" 2>/dev/null || true
 }
 
+# T014: Fetch check runs via GraphQL batch query
+fetch_checks_graphql() {
+  local owner="$1"
+  local repo="$2"
+  local branch="$3"
+  local limit="$4"
+
+  # shellcheck disable=SC2016  # GraphQL query uses literal $variables, not Bash variables
+  local query='
+query($owner: String!, $repo: String!, $branch: String!, $limit: Int!) {
+  repository(owner: $owner, name: $repo) {
+    ref(qualifiedName: $branch) {
+      target {
+        ... on Commit {
+          history(first: $limit) {
+            nodes {
+              oid
+              checkSuites(first: 100) {
+                nodes {
+                  checkRuns(first: 100) {
+                    nodes {
+                      name
+                      status
+                      conclusion
+                    }
+                  }
+                }
+              }
+            }
+          }
+        }
+      }
+    }
+  }
+}
+'
+
+  # Execute query with timeout
+  run_with_timeout "$API_TIMEOUT" gh api graphql \
+    -f query="$query" \
+    -f owner="$owner" \
+    -f repo="$repo" \
+    -f branch="refs/heads/$branch" \
+    -F limit="$limit" 2>&1
+}
+
+# T015: Transform GraphQL nested response to flat TSV format
+transform_graphql_response() {
+  local response="$1"
+
+  # Transform nested GraphQL JSON to flat TSV (SHA<TAB>NAME<TAB>status<TAB>conclusion)
+  jq -r '
+    .data.repository.ref.target.history.nodes[]? as $commit |
+    $commit.oid as $sha |
+    (
+      $commit.checkSuites.nodes[]? |
+      .checkRuns.nodes[]? |
+      [$sha, .name, (.status // "" | ascii_downcase), (.conclusion // "" | ascii_downcase)]
+    ) |
+    @tsv
+  ' <<< "$response" 2>/dev/null || true
+}
+
+# T016: Group TSV lines by commit SHA for aggregation
+group_by_sha() {
+  local tsv_data="$1"
+  local sha="$2"
+
+  # Extract lines for specific SHA
+  grep "^${sha}" <<< "$tsv_data" | cut -f2- || true
+}
+
 run_once() {
   INDEX=0
   declare -A LINE_MAP
@@ -271,8 +346,134 @@ run_once() {
     SPINNER_PID=$!
   fi
 
-  pids=()
-  for i in $(seq 0 $((TOTAL-1))); do
+  # T017-T022: GraphQL batch query integration
+  GRAPHQL_SUCCESS=0
+  if [[ "$USE_REST" != "1" ]]; then
+    # Attempt GraphQL batch query
+    if [[ "$CACHE_DEBUG" == "1" ]]; then
+      echo "[GraphQL] Attempting batch query for $TOTAL commits" >&2
+    fi
+
+    GRAPHQL_RESPONSE=$(fetch_checks_graphql "$OWNER" "$REPO" "$BRANCH" "$LIMIT" 2>&1)
+    GRAPHQL_EXIT=$?
+
+    # T018: Check for GraphQL errors or timeout
+    if [[ $GRAPHQL_EXIT -eq 0 ]] && [[ "$GRAPHQL_RESPONSE" != "__TIMEOUT__" ]]; then
+      # Check if response has errors or missing data structure
+      if ! echo "$GRAPHQL_RESPONSE" | jq -e '.errors' >/dev/null 2>&1 && \
+         echo "$GRAPHQL_RESPONSE" | jq -e '.data.repository.ref.target.history.nodes' >/dev/null 2>&1; then
+
+        # T019: GraphQL succeeded, transform response
+        GRAPHQL_TSV=$(transform_graphql_response "$GRAPHQL_RESPONSE")
+
+        if [[ -n "$GRAPHQL_TSV" ]]; then
+          GRAPHQL_SUCCESS=1
+          if [[ "$CACHE_DEBUG" == "1" ]]; then
+            echo "[GraphQL] Success - processing $(echo "$GRAPHQL_TSV" | wc -l) check runs" >&2
+          fi
+
+          # Process each commit with GraphQL data
+          for i in $(seq 0 $((TOTAL-1))); do
+            SHA="${SHA_MAP[$i]}"
+
+            # T020: Cache hit check (same as REST)
+            if [[ -n "${SUCCESS_CACHE[$SHA]:-}" && "$SHOW_CHECKS" != "1" && "$NO_CACHE" != "1" ]]; then
+              if [[ "$CACHE_DEBUG" == "1" ]]; then
+                echo "[cache hit] $SHA" >&2
+              fi
+              echo "✅  ${LINE_MAP[$i]}" > "$TMPDIR/$i"
+              echo 1 >> "$TMPDIR/.done"
+              continue
+            fi
+
+            # Extract check runs for this commit from GraphQL TSV
+            RAW_LINES=$(group_by_sha "$GRAPHQL_TSV" "$SHA")
+
+            # T021: Aggregate status using existing logic
+            success_count=0; fail_count=0; cancel_count=0; pending_count=0; other_count=0; total_count=0
+            DETAIL_OUTPUT=""
+
+            if [[ -n "$RAW_LINES" ]]; then
+              while IFS=$'\t' read -r NAME STATUS CONCLUSION; do
+                total_count=$((total_count+1))
+                ICON_RUN=""
+                if [[ -z "$CONCLUSION" && "$STATUS" != "completed" ]]; then
+                  ICON_RUN="🕓"; pending_count=$((pending_count+1))
+                elif [[ "$CONCLUSION" == "success" ]]; then
+                  ICON_RUN="✅"; success_count=$((success_count+1))
+                elif [[ "$CONCLUSION" =~ ^(failure|timed_out|action_required)$ ]]; then
+                  ICON_RUN="❌"; fail_count=$((fail_count+1))
+                elif [[ "$CONCLUSION" == "cancelled" ]]; then
+                  ICON_RUN="🚫"; cancel_count=$((cancel_count+1))
+                elif [[ "$CONCLUSION" =~ ^(neutral|skipped|stale)$ ]]; then
+                  ICON_RUN="➖"; other_count=$((other_count+1))
+                else
+                  ICON_RUN="❔"; other_count=$((other_count+1))
+                fi
+
+                # T022: Handle --checks flag for per-check details
+                if [[ "$SHOW_CHECKS" == "1" ]]; then
+                  SHORT_NAME="$NAME"
+                  [[ ${#SHORT_NAME} -gt 40 ]] && SHORT_NAME="${SHORT_NAME:0:37}..."
+                  DETAIL_OUTPUT+="    • $ICON_RUN $SHORT_NAME ($STATUS${CONCLUSION:+/$CONCLUSION})\n"
+                fi
+              done <<<"$RAW_LINES"
+            fi
+
+            # Determine overall icon (same logic as REST)
+            OVERALL_ICON="❔"
+            if [[ $fail_count -gt 0 ]]; then
+              OVERALL_ICON="❌"
+            elif [[ $pending_count -gt 0 ]]; then
+              OVERALL_ICON="🕓"
+            elif [[ $cancel_count -gt 0 ]]; then
+              OVERALL_ICON="🚫"
+            elif [[ $success_count -gt 0 && $fail_count -eq 0 ]]; then
+              OVERALL_ICON="✅"
+            fi
+
+            # Write output to temp file
+            {
+              echo "$OVERALL_ICON  ${LINE_MAP[$i]}"
+              if [[ "$SHOW_CHECKS" == "1" && -n "$DETAIL_OUTPUT" ]]; then
+                printf "%b" "$DETAIL_OUTPUT"
+              fi
+            } > "$TMPDIR/$i"
+
+            # Cache store: only add if overall success and no pending checks
+            if [[ "$OVERALL_ICON" == "✅" && $pending_count -eq 0 ]]; then
+              if [[ -z "${SUCCESS_CACHE[$SHA]:-}" ]]; then
+                echo -e "$SHA\t$NOW_EPOCH" >> "$CACHE_FILE"
+              fi
+            fi
+
+            echo 1 >> "$TMPDIR/.done"
+          done
+        else
+          if [[ "$CACHE_DEBUG" == "1" ]]; then
+            echo "[GraphQL] Transformation returned empty, falling back to REST" >&2
+          fi
+        fi
+      else
+        if [[ "$CACHE_DEBUG" == "1" ]]; then
+          echo "[GraphQL] Error or missing data structure, falling back to REST" >&2
+        fi
+      fi
+    else
+      if [[ "$CACHE_DEBUG" == "1" ]]; then
+        if [[ "$GRAPHQL_RESPONSE" == "__TIMEOUT__" ]]; then
+          echo "[GraphQL] Timeout, falling back to REST" >&2
+        else
+          echo "[GraphQL] Query failed (exit $GRAPHQL_EXIT), falling back to REST" >&2
+        fi
+      fi
+    fi
+  fi
+
+  # REST API fallback (existing code) - only runs if GraphQL failed or USE_REST=1
+  if [[ "$GRAPHQL_SUCCESS" != "1" ]]; then
+    pids=()
+    for i in $(seq 0 $((TOTAL-1))); do
     SHA="${SHA_MAP[$i]}"
     # Cache hit: if commit is cached success and not showing checks and --no-cache not set, skip API
     if [[ -n "${SUCCESS_CACHE[$SHA]:-}" && "$SHOW_CHECKS" != "1" && "$NO_CACHE" != "1" ]]; then
@@ -350,6 +551,7 @@ run_once() {
   for pid in "${pids[@]}"; do
     wait "$pid" 2>/dev/null || true
   done
+  fi  # End of REST API fallback
 
   COMPLETED=$TOTAL
   if [[ -n "${SPINNER_PID:-}" && "$NO_SPINNER" -ne 1 ]]; then

@@ -98,6 +98,7 @@ $ gh log-ci
 |------------|-------------|
 | Auto branch | Detects default branch, falls back to master/main/HEAD |
 | Status aggregation | Smarter overall icon (pending vs all-green vs mixed failure) |
+| GraphQL batch query | Single batch query fetches all commit statuses (automatic fallback to REST) |
 | Per-check summaries | Optional detailed list via `--checks` / `LOG_CI_SHOW_CHECKS=1` |
 | Parallel fetching | Concurrency-controlled API calls (`--concurrency`) |
 | Colorized log | Mirrors `git log` pretty format with colors |
@@ -146,23 +147,17 @@ gh auth login
 - Cache bypass: `--no-cache` to force fresh API calls for all commits.
 
 ## Limitations
-- One REST API call per commit (future: GraphQL batch).
 - Per-check summaries increase output size (consider piping/grep).
 - Neutral/skipped/stale checks don't affect overall icon yet.
 - No JSON / alternative formats yet.
 - Assumes `origin` remote name.
+- GraphQL queries limited to 100 check suites per commit (use `--use-rest` for commits with >100 suites).
 
 ## Roadmap
-- Accessibility: `--no-emoji`, `--no-color` respecting `NO_COLOR`.
 - Rate-limit handling with backoff + user notice.
-- Commit age column (e.g., `2h ago`).
-- GraphQL batch query to reduce API calls: use a single GraphQL batch query to fetch all check suite statuses.
-<!-- queued vs in_progress distinction implemented in 0.6.0 -->
-- Replace temp files with mkfifo or captured descriptors for even less I/O (micro-optimization).
 - Workflow names and URLs (opt-in with a flag).
 - Filtering: author, status, date range, grep on commit message.
 - Semantic versioning policy (documented in README).
-- Output formats: `--format json`, `--format table`, `--format md`.
 
 ## Testing
 We use [bats](https://github.com/bats-core/bats-core) for basic behavioral tests and [shellcheck](https://www.shellcheck.net/) for static analysis.
