@@ -153,16 +153,11 @@ gh auth login
 - Assumes `origin` remote name.
 
 ## Roadmap
-- Accessibility: `--no-emoji`, `--no-color` respecting `NO_COLOR`.
-- Rate-limit handling with backoff + user notice.
-- Commit age column (e.g., `2h ago`).
 - GraphQL batch query to reduce API calls: use a single GraphQL batch query to fetch all check suite statuses.
-<!-- queued vs in_progress distinction implemented in 0.6.0 -->
-- Replace temp files with mkfifo or captured descriptors for even less I/O (micro-optimization).
+- Rate-limit handling with backoff + user notice.
 - Workflow names and URLs (opt-in with a flag).
 - Filtering: author, status, date range, grep on commit message.
 - Semantic versioning policy (documented in README).
-- Output formats: `--format json`, `--format table`, `--format md`.
 
 ## Testing
 We use [bats](https://github.com/bats-core/bats-core) for basic behavioral tests and [shellcheck](https://www.shellcheck.net/) for static analysis.
