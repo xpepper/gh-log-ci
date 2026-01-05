@@ -71,11 +71,11 @@
 - [X] T023 [US1] Run `make test` - all tests including new GraphQL tests MUST pass
 - [X] T024 [US1] Manual test: run `gh log-ci --limit 5` and verify single GraphQL call made
 - [X] T025 [US1] Manual test: compare outputs `gh log-ci --limit 10` vs `gh log-ci --use-rest --limit 10` (should be identical)
-- [ ] T026 [US1] Update README.md: remove "One REST API call per commit" from Limitations section (line ~146)
-- [ ] T027 [US1] Update README.md: add GraphQL batch query to Features section (line ~88)
-- [ ] T028 [US1] Update AGENTS.md: document GraphQL architecture and query structure (line ~50)
-- [ ] T029 [US1] Update VERSION to 0.7.0 in gh-log-ci script header (line ~6)
-- [ ] T030 [US1] Run `make test` final verification - all tests MUST pass including shellcheck
+- [X] T026 [US1] Update README.md: remove "One REST API call per commit" from Limitations section (line ~146)
+- [X] T027 [US1] Update README.md: add GraphQL batch query to Features section (line ~88)
+- [X] T028 [US1] Update AGENTS.md: document GraphQL architecture and query structure (line ~50)
+- [X] T029 [US1] Update VERSION to 0.7.0 in gh-log-ci script header (line ~6)
+- [X] T030 [US1] Run `make test` final verification - all tests MUST pass including shellcheck
 
 **Checkpoint**: User Story 1 complete - GraphQL batch query working, output identical to REST, all tests pass
 

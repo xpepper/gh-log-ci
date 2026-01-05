@@ -6,11 +6,21 @@ gh-log-ci is a GitHub CLI extension that displays CI status next to commit logs.
 
 ## Architecture
 
-- **Single Bash script**: The entire functionality is in `gh-log-ci` (lines 1-378)
-- **GitHub API integration**: Uses `gh api` to fetch check runs for each commit
+- **Single Bash script**: The entire functionality is in `gh-log-ci` (~620 lines)
+- **GitHub API integration**: Uses GraphQL API v4 for batch queries (automatic fallback to REST API v3)
 - **Caching system**: Success-only caching with TTL to reduce API calls
-- **Parallel processing**: Configurable concurrency for API calls
+- **Parallel processing**: Configurable concurrency for REST API fallback
 - **Watch mode**: Continuous polling with configurable intervals
+
+### API Strategy
+- **Primary: GraphQL batch query**: Single query fetches all commit check statuses (lines 224-287)
+  - Query structure: Repository → Ref → Target → History(limit) → CheckSuites(100) → CheckRuns(100)
+  - Reduces API calls from N to 1 (93% reduction for 15 commits)
+  - Transformation: GraphQL JSON → jq → TSV → existing aggregation logic
+- **Fallback: REST API**: Per-commit API calls with concurrency control (lines 475-553)
+  - Automatic fallback on GraphQL errors, timeouts, or unsupported fields (GHES <3.4)
+  - Manual override: `--use-rest` flag or `LOG_CI_FORCE_REST=1` environment variable
+- **Response handling**: Both APIs use identical status aggregation and icon mapping logic
 
 ## Development Workflow
 
@@ -57,10 +67,14 @@ make run
 - **Argument parsing**: Lines 70-119 handle CLI flags and environment variables
 - **Branch detection**: Lines 146-162 auto-detect branch using GitHub API and git fallbacks
 - **Remote URL parsing**: Lines 171-179 extract owner/repo from GitHub URLs
-- **Cache management**: Lines 234-248 read cache, lines 336-342 write cache with pending_count validation
-- **Parallel processing**: Lines 274-350 handle concurrent API calls with configurable limits
-- **Status mapping**: Lines 290-326 map GitHub check statuses to emoji icons
-- **Watch mode**: Lines 365-378 implement continuous polling
+- **GraphQL functions**: Lines 224-287 handle batch query, transformation, and grouping
+  - `fetch_checks_graphql()`: Execute GraphQL batch query with timeout
+  - `transform_graphql_response()`: Convert nested JSON to TSV format
+  - `group_by_sha()`: Extract check runs for specific commit SHA
+- **Cache management**: Lines 310-323 read cache with TTL validation
+- **Main loop integration**: Lines 343-553 attempt GraphQL, fallback to REST on errors
+- **Status aggregation**: Shared logic reused for both GraphQL and REST responses
+- **Watch mode**: Lines 591-618 implement continuous polling
 
 ### Caching System
 - **Success-only caching**: Only caches successful commits (line 336)
@@ -76,6 +90,7 @@ make run
 - **timeout.bats**: Tests API timeout handling
 - **watch_flags.bats**: Tests watch mode functionality
 - **pending_icon.bats**: Tests pending status display and cache validation (prevents bug where pending builds showed ✅)
+- **graphql_batch.bats**: Tests GraphQL query construction, transformation, and fallback behavior
 
 ## Environment Variables
 
@@ -88,6 +103,7 @@ make run
 - `LOG_CI_CACHE_TTL`: Cache TTL in seconds (default: 86400)
 - `LOG_CI_CACHE_DIR`: Cache directory path
 - `LOG_CI_CACHE_DEBUG`: Enable cache debugging output
+- `LOG_CI_FORCE_REST`: Force REST API mode (default: 0, set to 1 to bypass GraphQL)
 
 ## Important Implementation Details
 
