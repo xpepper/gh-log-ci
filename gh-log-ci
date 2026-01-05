@@ -22,9 +22,7 @@ Usage:
    --watch                Continuously poll and update commit statuses
    --watch-interval <s>   Seconds between polls in watch mode (default: 10; env LOG_CI_WATCH_INTERVAL)
    --no-cache             Ignore success cache, force fresh API calls for all commits
-   --help, -h             Show this help text
-   --version              Show version
-
+  --use-rest             Force REST API mode, bypass GraphQL (env LOG_CI_FORCE_REST=1)
 Branch auto-detect order when <branch> not supplied:
   1. GitHub default branch (via gh repo view)
   2. master (if exists)
@@ -65,6 +63,7 @@ CACHE_TTL="${LOG_CI_CACHE_TTL:-86400}" # seconds (default 24h)
 CACHE_DIR="${LOG_CI_CACHE_DIR:-$HOME/.cache/gh-log-ci}"
 CACHE_DEBUG="${LOG_CI_CACHE_DEBUG:-0}"
 NO_CACHE=0
+USE_REST="${LOG_CI_FORCE_REST:-0}"
 
 # Parse flags
 POS_ARGS=()
@@ -96,6 +95,10 @@ while [[ $# -gt 0 ]]; do
       ;;
     --no-cache)
       NO_CACHE=1
+      ;;
+    --use-rest)
+      # shellcheck disable=SC2034  # Used in main loop (Phase 3 implementation)
+      USE_REST=1
       ;;
     -h|--help)
       show_help; exit 0
