@@ -6,19 +6,19 @@ gh-log-ci is a GitHub CLI extension that displays CI status next to commit logs.
 
 ## Architecture
 
-- **Single Bash script**: The entire functionality is in `gh-log-ci` (~620 lines)
+- **Single Bash script**: The entire functionality is in `gh-log-ci` (637 lines)
 - **GitHub API integration**: Uses GraphQL API v4 for batch queries (explicit REST API v3 mode via `--use-rest`)
 - **Caching system**: Success-only caching with TTL to reduce API calls
 - **Parallel processing**: Configurable concurrency for REST API mode
 - **Watch mode**: Continuous polling with configurable intervals
 
 ### API Strategy
-- **Primary: GraphQL batch query**: Single query fetches all commit check statuses (lines 224-287)
+- **Primary: GraphQL batch query**: Single query fetches all commit check statuses (lines 221-290)
   - Query structure: Repository → Ref → Target → History(limit) → CheckSuites(100) → CheckRuns(100)
   - Reduces API calls from N to 1 (93% reduction for 15 commits)
   - Transformation: GraphQL JSON → jq → TSV → existing aggregation logic
   - **When to use**: Default mode, optimal for GitHub.com and GitHub Enterprise Server ≥ 3.4
-- **REST API mode**: Per-commit API calls with concurrency control (lines 475-553)
+- **REST API mode**: Per-commit API calls with concurrency control (lines 432-553)
   - Manual override: `--use-rest` flag or `LOG_CI_FORCE_REST=1` environment variable
   - **When to use**:
     - GitHub Enterprise Server < 3.4 (GraphQL Checks API unavailable)
@@ -74,14 +74,14 @@ make run
 - **Argument parsing**: Lines 70-119 handle CLI flags and environment variables
 - **Branch detection**: Lines 146-162 auto-detect branch using GitHub API and git fallbacks
 - **Remote URL parsing**: Lines 171-179 extract owner/repo from GitHub URLs
-- **GraphQL functions**: Lines 224-287 handle batch query, transformation, and grouping
+- **GraphQL functions**: Lines 221-290 handle batch query, transformation, and grouping
   - `fetch_checks_graphql()`: Execute GraphQL batch query with timeout
   - `transform_graphql_response()`: Convert nested JSON to TSV format
   - `group_by_sha()`: Extract check runs for specific commit SHA
 - **Cache management**: Lines 310-323 read cache with TTL validation
-- **Main loop integration**: Lines 343-553 GraphQL or REST mode (controlled by --use-rest flag)
+- **Main loop integration**: Lines 303-622 GraphQL or REST mode (controlled by --use-rest flag)
 - **Status aggregation**: Shared logic reused for both GraphQL and REST responses
-- **Watch mode**: Lines 591-618 implement continuous polling
+- **Watch mode**: Lines 624-635 implement continuous polling
 
 ### Caching System
 - **Success-only caching**: Only caches successful commits (line 336)
@@ -114,8 +114,8 @@ make run
 
 ## Important Implementation Details
 
-- Uses `git log` with custom format for commit display (line 193)
-- Implements timeout handling for API calls (lines 195-215)
+- Uses `git log` with custom format for commit display (line 196)
+- Implements timeout handling for API calls (lines 198-218)
 - Progress spinner shows completed/total count (lines 253-266)
 - Status aggregation logic prioritizes failures over pending over success (lines 318-326)
 - Watch mode clears screen between iterations (lines 367-368)
