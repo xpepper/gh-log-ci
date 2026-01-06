@@ -97,42 +97,73 @@ teardown() {
 # User Story 2: Fallback to REST API (T031-T034)
 # ==============================================================================
 
-@test "fallback on GraphQL error response" {
-  skip "Test to be implemented - T031"
-  # TODO: Mock GraphQL error (schema unsupported), verify REST API used
-  # Expected: REST API called as fallback
-}
-
-@test "fallback on GraphQL timeout" {
-  skip "Test to be implemented - T032"
-  # TODO: Mock slow GraphQL response, verify timeout triggers fallback
-  # Expected: REST API called after timeout
-}
-
-@test "fallback on missing GraphQL fields (GHES <3.4 simulation)" {
-  skip "Test to be implemented - T033"
-  # TODO: Mock response with missing checkSuites field
-  # Expected: REST API called as fallback
-}
-
 # ==============================================================================
-# User Story 3: REST Mode Option (T046-T048)
+# User Story 2: REST Mode Option for Compatibility (T031-T034)
 # ==============================================================================
 
 @test "--use-rest flag bypasses GraphQL" {
-  skip "Test to be implemented - T046"
-  # TODO: Run with --use-rest flag, verify GraphQL not called
-  # Expected: Only REST API calls made
+  # T031: Verify that --use-rest flag prevents GraphQL query
+  # We test this by checking that no GraphQL-specific debug messages appear
+
+  export LOG_CI_CACHE_DEBUG=1
+  BRANCH=$(git rev-parse --abbrev-ref HEAD)
+
+  run ./gh-log-ci --limit 1 --branch "$BRANCH" --use-rest --no-cache
+
+  [ "$status" -eq 0 ]
+  # Should NOT see GraphQL debug messages
+  ! [[ "$output" =~ "\[GraphQL\]" ]]
 }
 
 @test "LOG_CI_FORCE_REST=1 bypasses GraphQL" {
-  skip "Test to be implemented - T047"
-  # TODO: Set environment variable, verify GraphQL not called
-  # Expected: Only REST API calls made
+  # T032: Verify that LOG_CI_FORCE_REST environment variable prevents GraphQL
+
+  export LOG_CI_FORCE_REST=1
+  export LOG_CI_CACHE_DEBUG=1
+  BRANCH=$(git rev-parse --abbrev-ref HEAD)
+
+  run ./gh-log-ci --limit 1 --branch "$BRANCH" --no-cache
+
+  [ "$status" -eq 0 ]
+  # Should NOT see GraphQL debug messages
+  ! [[ "$output" =~ "\[GraphQL\]" ]]
 }
 
 @test "--use-rest works with --concurrency flag" {
-  skip "Test to be implemented - T048"
-  # TODO: Run with both flags, verify parallel REST processing works
-  # Expected: Concurrency control maintained in REST mode
+  # T033: Verify that --use-rest works with custom concurrency
+
+  BRANCH=$(git rev-parse --abbrev-ref HEAD)
+
+  run ./gh-log-ci --limit 5 --branch "$BRANCH" --use-rest --concurrency 2 --no-cache
+
+  [ "$status" -eq 0 ]
+  # Should display commit info (check for status icons)
+  [[ "$output" =~ ✅|❌|🕓 ]]
 }
+
+@test "--use-rest flag appears in help text" {
+  # T034: Verify help documentation includes --use-rest flag
+
+  run ./gh-log-ci --help
+
+  [ "$status" -eq 0 ]
+  [[ "$output" =~ "--use-rest" ]]
+  [[ "$output" =~ "REST API" ]]
+}
+
+# ==============================================================================
+# Removed: Automatic Fallback Tests (no longer applicable after refactor)
+# ==============================================================================
+
+@test "fallback on GraphQL error response" {
+  skip "Test removed - automatic fallback no longer exists (use --use-rest instead)"
+}
+
+@test "fallback on GraphQL timeout" {
+  skip "Test removed - automatic fallback no longer exists (use --use-rest instead)"
+}
+
+@test "fallback on missing GraphQL fields (GHES <3.4 simulation)" {
+  skip "Test removed - automatic fallback no longer exists (use --use-rest instead)"
+}
+
