@@ -1,14 +1,15 @@
 # Tasks: GraphQL Batch Query for Check Statuses
 
-**Feature Branch**: `003-rest-mode-option` (User Story 2)
+**Feature Branch**: `004-polish-and-validation` (Phase 5)
 **Pull Request**: TBD
 **Previous PRs**:
 - [#26](https://github.com/xpepper/gh-log-ci/pull/26) - User Story 1 MVP (MERGED)
 - [#27](https://github.com/xpepper/gh-log-ci/pull/27) - Remove automatic fallback (MERGED)
+- [#28](https://github.com/xpepper/gh-log-ci/pull/28) - User Story 2 REST mode option (MERGED)
 **Input**: Design documents from `/specs/001-graphql-batch-query/`
 **Prerequisites**: plan.md, spec.md, research.md, data-model.md, contracts/graphql-query.md
 
-**Status**: User Story 1 COMPLETE + Fallback Removal COMPLETE + User Story 2 COMPLETE → Ready for PR (44/65 tasks, 68%)
+**Status**: User Stories 1-2 COMPLETE → Starting Phase 5: Polish & Cross-Cutting (44/65 tasks, 68%)
 
 **Constitution Reminder**: All changes MUST follow Test-First Development (Principle I). Write tests FIRST, ensure they FAIL, then implement.
 
