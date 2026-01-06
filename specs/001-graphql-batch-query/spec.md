@@ -1,8 +1,9 @@
 # Feature Specification: GraphQL Batch Query for Check Statuses
 
-**Feature Branch**: `001-graphql-batch-query`
+**Feature Branch**: `001-graphql-batch-query` (merged)
 **Created**: 2026-01-06
-**Status**: Draft
+**Completed**: 2026-01-06
+**Status**: ✅ Complete (v0.7.0)
 **Input**: User description: "Refactor the tool to use GitHub GraphQL batch query to reduce API calls: use a single GraphQL batch query to fetch all check suite statuses."
 
 ## User Scenarios & Testing *(mandatory)*

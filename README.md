@@ -236,13 +236,14 @@ See `make help` for a complete list of available tasks.
 | Remote URL error | Ensure you're inside a GitHub repo with an `origin` remote |
 | Auth errors | Run `gh auth status` then `gh auth login` |
 | All 🕓 icons | Checks not started yet or using legacy status API |
-| Slow output | Limit commits or wait between runs to avoid rate limits |
+| GraphQL errors | Try `--use-rest` flag to bypass GraphQL (required for GHES <3.4) |
+| Slow output | Use GraphQL mode (default) for best performance; reduce `--limit` if needed |
 
 ## License
 See `LICENSE`.
 
 ## Disclaimer
-Early MVP; expect changes as features mature.
+This tool is under active development. While stable for everyday use, expect new features and improvements in future releases.
 
 ## Changelog
 
