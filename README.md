@@ -248,6 +248,7 @@ Early MVP; expect changes as features mature.
 
 | Version | Date | Notes |
 |---------|------|-------|
+| 0.7.0 | 2026-01-06 | GraphQL batch query (93% API call reduction); `--use-rest` flag for GHES <3.4 compatibility; 54% faster for 15+ commits |
 | 0.6.0 | 2025-11-17 | Distinguish blocked queued runs (🔁 icon); update legend & features |
 | 0.5.0 | 2025-11-04 | Add --no-cache flag to bypass success cache and force fresh API calls |
 | 0.4.1 | 2025-10-23 | Success-only caching (TTL, dir config, debug env) skips API calls for cached successes |
