@@ -1,7 +1,7 @@
 # Tasks: GraphQL Batch Query for Check Statuses
 
 **Feature Branch**: `004-polish-and-validation` (Phase 5)
-**Pull Request**: TBD
+**Pull Request**: [#29](https://github.com/xpepper/gh-log-ci/pull/29) (OPEN)
 **Previous PRs**:
 - [#26](https://github.com/xpepper/gh-log-ci/pull/26) - User Story 1 MVP (MERGED)
 - [#27](https://github.com/xpepper/gh-log-ci/pull/27) - Remove automatic fallback (MERGED)
@@ -152,9 +152,9 @@
 - [X] T075 Update CHANGELOG in README.md: add 0.7.0 entry with GraphQL feature
 - [X] T076 Verify all constitution principles satisfied (final checklist)
 - [X] T077 Run `make test` one final time - must be 100% green
-- [ ] T078 Commit changes with conventional commit message: `feat: complete GraphQL batch query feature (v0.7.0)`
-- [ ] T079 Push feature branch to remote: `git push origin 004-polish-and-validation`
-- [ ] T080 Open pull request against master with comprehensive description
+- [X] T078 Commit changes with conventional commit message: `feat: complete GraphQL batch query feature (v0.7.0)`
+- [X] T079 Push feature branch to remote: `git push origin 004-polish-and-validation`
+- [X] T080 Open pull request against master with comprehensive description - **PR #29 created**
 
 ---
 
