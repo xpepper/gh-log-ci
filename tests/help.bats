@@ -18,6 +18,6 @@ setup() {
 }
 
 @test "accepts limit" {
-  run "$SCRIPT" --limit 2 --branch "$(git rev-parse --abbrev-ref HEAD)"
+  run "$SCRIPT" --limit 2 --branch "$(git rev-parse --abbrev-ref HEAD)" --use-rest
   [ "$status" -eq 0 ]
 }

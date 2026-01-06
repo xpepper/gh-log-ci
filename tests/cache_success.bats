@@ -22,7 +22,7 @@ setup() {
   fi
   CACHE_FILE="$LOG_CI_CACHE_DIR/${OWNER}_${REPO}_success.cache"
   echo -e "$FULL_SHA\t$TS" > "$CACHE_FILE"
-  run "$SCRIPT" --limit 1 --branch "$BRANCH"
+  run "$SCRIPT" --limit 1 --branch "$BRANCH" --use-rest
   [ "$status" -eq 0 ]
   [[ "$output" == *"$SHORT_SHA"* ]]
   [[ "$output" == *"[cache hit]"* ]]
@@ -40,7 +40,7 @@ setup() {
   fi
   CACHE_FILE="$LOG_CI_CACHE_DIR/${OWNER}_${REPO}_success.cache"
   echo -e "$FULL_SHA\t$TS" > "$CACHE_FILE"
-  run "$SCRIPT" --limit 1 --branch "$BRANCH" --no-cache
+  run "$SCRIPT" --limit 1 --branch "$BRANCH" --no-cache --use-rest
   [ "$status" -eq 0 ]
   [[ "$output" == *"$SHORT_SHA"* ]]
   [[ "$output" != *"[cache hit]"* ]]

@@ -11,7 +11,7 @@ setup() {
 }
 
 @test "single iteration watch mode" {
-  LOG_CI_WATCH_ONCE=1 run "$SCRIPT" --watch --watch-interval 2 --branch "$(git rev-parse --abbrev-ref HEAD)" --limit 1
+  LOG_CI_WATCH_ONCE=1 run "$SCRIPT" --watch --watch-interval 2 --branch "$(git rev-parse --abbrev-ref HEAD)" --limit 1 --use-rest
   [ "$status" -eq 0 ]
   [[ "$output" == *"[watch]"* ]]
 }
