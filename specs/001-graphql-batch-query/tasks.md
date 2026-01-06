@@ -1,11 +1,12 @@
 # Tasks: GraphQL Batch Query for Check Statuses
 
-**Feature Branch**: `001-graphql-batch-query`
-**Pull Request**: [#26](https://github.com/xpepper/gh-log-ci/pull/26) - User Story 1 MVP (REVIEW IN PROGRESS)
+**Feature Branch**: `002-remove-automatic-fallback` (refactor branch from master)
+**Pull Request**: [#27](https://github.com/xpepper/gh-log-ci/pull/27) - Remove automatic fallback (REVIEW IN PROGRESS)
+**Previous PR**: [#26](https://github.com/xpepper/gh-log-ci/pull/26) - User Story 1 MVP (MERGED to master)
 **Input**: Design documents from `/specs/001-graphql-batch-query/`
 **Prerequisites**: plan.md, spec.md, research.md, data-model.md, contracts/graphql-query.md
 
-**Status**: User Story 1 COMPLETE (30/80 tasks, 37.5%) - PR #26 awaiting review
+**Status**: User Story 1 COMPLETE + Fallback Removal (30/65 tasks, 46%)
 
 **Constitution Reminder**: All changes MUST follow Test-First Development (Principle I). Write tests FIRST, ensure they FAIL, then implement.
 
