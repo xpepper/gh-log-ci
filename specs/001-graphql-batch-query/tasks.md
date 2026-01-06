@@ -9,7 +9,7 @@
 **Input**: Design documents from `/specs/001-graphql-batch-query/`
 **Prerequisites**: plan.md, spec.md, research.md, data-model.md, contracts/graphql-query.md
 
-**Status**: User Stories 1-2 COMPLETE → Starting Phase 5: Polish & Cross-Cutting (44/65 tasks, 68%)
+**Status**: User Stories 1-2 COMPLETE → Phase 5 nearly complete, ready for final PR (58/65 tasks, 89%)
 
 **Constitution Reminder**: All changes MUST follow Test-First Development (Principle I). Write tests FIRST, ensure they FAIL, then implement.
 
@@ -126,11 +126,11 @@
 
 ### Integration & Testing
 
-- [ ] T045 [P] Run full test suite: `make test` (shellcheck + all bats tests)
-- [ ] T046 [P] Verify cache behavior with GraphQL: run twice, second run should use cache
+- [X] T045 [P] Run full test suite: `make test` (shellcheck + all bats tests)
+- [X] T046 [P] Verify cache behavior with GraphQL: run twice, second run should use cache
 - [ ] T047 [P] Update tests/cache_success.bats: verify caching works identically with GraphQL responses
-- [ ] T048 [P] Test with `--no-cache` flag: verify GraphQL query executed even for cached commits
-- [ ] T049 [P] Test watch mode with GraphQL: `gh log-ci --watch --watch-interval 5`
+- [X] T048 [P] Test with `--no-cache` flag: verify GraphQL query executed even for cached commits
+- [X] T049 [P] Test watch mode with GraphQL: `gh log-ci --watch --watch-interval 5`
 - [ ] T050 Test edge case: commits with >100 check runs (document limitation if needed)
 - [ ] T051 Test edge case: commits with no check runs (verify ❔ icon displayed)
 - [ ] T052 Test edge case: very old commits (verify behavior with archived workflow runs)
@@ -139,19 +139,19 @@
 
 ### Performance Validation
 
-- [ ] T068 Measure API call reduction: count calls for `--limit 15` (GraphQL: 1, REST: 15)
-- [ ] T069 Benchmark execution time: `time gh log-ci --limit 20` (compare GraphQL vs REST)
-- [ ] T070 Verify 50%+ performance improvement for 15+ commits (SC-008)
-- [ ] T071 Test with large commit count: `gh log-ci --limit 50` (verify <30s timeout)
-- [ ] T072 Monitor cache hit rate with `LOG_CI_CACHE_DEBUG=1`
+- [X] T068 Measure API call reduction: count calls for `--limit 15` (GraphQL: 1, REST: 15)
+- [X] T069 Benchmark execution time: `time gh log-ci --limit 20` (compare GraphQL vs REST)
+- [X] T070 Verify 50%+ performance improvement for 15+ commits (SC-008) - **54% faster: 2.6s vs 5.7s**
+- [X] T071 Test with large commit count: `gh log-ci --limit 50` (verify <30s timeout) - **GraphQL limitation found, REST works**
+- [X] T072 Monitor cache hit rate with `LOG_CI_CACHE_DEBUG=1`
 
 ### Documentation & Release
 
-- [ ] T073 Review README.md: ensure all GraphQL features documented
-- [ ] T074 Review AGENTS.md: ensure all implementation details captured
-- [ ] T075 Update CHANGELOG in README.md: add 0.7.0 entry with GraphQL feature
-- [ ] T076 Verify all constitution principles satisfied (final checklist)
-- [ ] T077 Run `make test` one final time - must be 100% green
+- [X] T073 Review README.md: ensure all GraphQL features documented
+- [X] T074 Review AGENTS.md: ensure all implementation details captured
+- [X] T075 Update CHANGELOG in README.md: add 0.7.0 entry with GraphQL feature
+- [X] T076 Verify all constitution principles satisfied (final checklist)
+- [X] T077 Run `make test` one final time - must be 100% green
 - [ ] T078 Commit changes with conventional commit message: `refactor: add GraphQL batch query for check statuses`
 - [ ] T079 Push feature branch to remote: `git push origin 001-graphql-batch-query`
 - [ ] T080 Open pull request against master with comprehensive description
