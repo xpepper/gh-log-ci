@@ -11,6 +11,6 @@ setup() {
 }
 
 @test "accepts api-timeout" {
-  run "$SCRIPT" --api-timeout 5 --limit 1 --branch "$(git rev-parse --abbrev-ref HEAD)"
+  run "$SCRIPT" --api-timeout 5 --limit 1 --branch "$(git rev-parse --abbrev-ref HEAD)" --use-rest
   [ "$status" -eq 0 ]
 }

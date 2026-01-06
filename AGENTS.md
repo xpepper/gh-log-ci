@@ -17,9 +17,9 @@ gh-log-ci is a GitHub CLI extension that displays CI status next to commit logs.
   - Query structure: Repository → Ref → Target → History(limit) → CheckSuites(100) → CheckRuns(100)
   - Reduces API calls from N to 1 (93% reduction for 15 commits)
   - Transformation: GraphQL JSON → jq → TSV → existing aggregation logic
-- **Fallback: REST API**: Per-commit API calls with concurrency control (lines 475-553)
-  - Automatic fallback on GraphQL errors, timeouts, or unsupported fields (GHES <3.4)
+- **REST API mode**: Per-commit API calls with concurrency control (lines 475-553)
   - Manual override: `--use-rest` flag or `LOG_CI_FORCE_REST=1` environment variable
+  - Used when GraphQL is unavailable (GHES <3.4) or user preference
 - **Response handling**: Both APIs use identical status aggregation and icon mapping logic
 
 ## Development Workflow
@@ -72,7 +72,7 @@ make run
   - `transform_graphql_response()`: Convert nested JSON to TSV format
   - `group_by_sha()`: Extract check runs for specific commit SHA
 - **Cache management**: Lines 310-323 read cache with TTL validation
-- **Main loop integration**: Lines 343-553 attempt GraphQL, fallback to REST on errors
+- **Main loop integration**: Lines 343-553 GraphQL or REST mode (controlled by --use-rest flag)
 - **Status aggregation**: Shared logic reused for both GraphQL and REST responses
 - **Watch mode**: Lines 591-618 implement continuous polling
 

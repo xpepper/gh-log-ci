@@ -35,35 +35,34 @@ As a user running `gh log-ci` on a GitHub Enterprise Server that may not support
 **Acceptance Scenarios**:
 
 1. **Given** GitHub API returns an error for GraphQL query, **When** the tool detects the error, **Then** it automatically retries using REST API endpoints
-2. **Given** I'm using GitHub Enterprise Server without GraphQL Checks support, **When** I run `gh log-ci`, **Then** the tool transparently falls back to REST and displays results
-3. **Given** GraphQL query times out, **When** timeout is detected, **Then** tool switches to REST API approach
+4. **Given** I run `gh log-ci --checks` for detailed view, **When** GraphQL returns check run details, **Then** per-check summaries match current REST output format
 
 ---
 
-### User Story 3 - Maintain Performance with Parallel Processing (Priority: P3)
+### User Story 2 - REST Mode Option for Compatibility (Priority: P2)
 
-As a power user who prefers REST API for specific reasons, I want the option to use REST mode with optimized parallel processing so that I maintain control over API usage patterns.
+As a user on GitHub Enterprise Server <3.4 or with specific API preferences, I want the option to use REST API mode so that I can still use the tool when GraphQL is unavailable.
 
-**Why this priority**: Some users may have specific rate limit budgeting or prefer REST API behavior. This maintains flexibility without removing existing functionality.
+**Why this priority**: Some GitHub Enterprise versions don't support GraphQL Checks API. Providing explicit REST mode ensures tool works everywhere.
 
-**Independent Test**: Can be tested by using a flag (e.g., `--use-rest`) and verifying parallel REST calls still work as before with concurrency control.
+**Independent Test**: Can be tested by using `--use-rest` flag and verifying REST API is used with parallel processing.
 
 **Acceptance Scenarios**:
 
-1. **Given** I run `gh log-ci --use-rest --concurrency 4`, **When** the tool executes, **Then** it uses REST API with 4 parallel workers as before
+1. **Given** I run `gh log-ci --use-rest --concurrency 4`, **When** the tool executes, **Then** it uses REST API with 4 parallel workers
 2. **Given** I have `LOG_CI_FORCE_REST=1` environment variable set, **When** I run `gh log-ci`, **Then** GraphQL is bypassed and REST API is used
+3. **Given** GraphQL query fails on my GHES instance, **When** I see the error message, **Then** it suggests using --use-rest flag
 
 ---
 
 ### Edge Cases
 
 - What happens when GraphQL query returns partial results (some commits missing check data)?
-- How does system handle GraphQL rate limit errors differently from REST rate limits?
 - What happens if commit SHAs are invalid or don't exist on remote?
 - How does the tool handle very large commit counts (>100) where GraphQL response might be huge?
 - What happens when check suites exist but have no check runs?
 - How does caching interact with GraphQL responses (cache key strategy)?
-- What happens if GraphQL schema changes or fields are deprecated?
+- What happens if GraphQL query times out or returns errors?
 
 ## Requirements *(mandatory)*
 

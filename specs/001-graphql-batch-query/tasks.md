@@ -1,11 +1,12 @@
 # Tasks: GraphQL Batch Query for Check Statuses
 
-**Feature Branch**: `001-graphql-batch-query`
-**Pull Request**: [#26](https://github.com/xpepper/gh-log-ci/pull/26) - User Story 1 MVP (REVIEW IN PROGRESS)
+**Feature Branch**: `002-remove-automatic-fallback` (refactor branch from master)
+**Pull Request**: [#27](https://github.com/xpepper/gh-log-ci/pull/27) - Remove automatic fallback (REVIEW IN PROGRESS)
+**Previous PR**: [#26](https://github.com/xpepper/gh-log-ci/pull/26) - User Story 1 MVP (MERGED to master)
 **Input**: Design documents from `/specs/001-graphql-batch-query/`
 **Prerequisites**: plan.md, spec.md, research.md, data-model.md, contracts/graphql-query.md
 
-**Status**: User Story 1 COMPLETE (30/80 tasks, 37.5%) - PR #26 awaiting review
+**Status**: User Story 1 COMPLETE + Fallback Removal (30/65 tasks, 46%)
 
 **Constitution Reminder**: All changes MUST follow Test-First Development (Principle I). Write tests FIRST, ensure they FAIL, then implement.
 
@@ -84,83 +85,52 @@
 
 ---
 
-## Phase 4: User Story 2 - Fallback to REST API (Priority: P2)
+## Phase 4: User Story 2 - REST Mode Option for Compatibility (Priority: P2)
 
-**Goal**: Automatically detect GraphQL failures and transparently fall back to REST API for backward compatibility
+**Goal**: Provide `--use-rest` flag for users on GHES <3.4 or with specific API preferences
 
-**Independent Test**: Mock GraphQL error (schema unsupported) and verify REST API is used as fallback with correct output
+**Independent Test**: Run `gh log-ci --use-rest --concurrency 4` and verify parallel REST calls work with concurrency control
 
 ### Tests for User Story 2 (REQUIRED per Constitution) ⚠️
 
 > **NOTE: Write these tests FIRST, ensure they FAIL before implementation**
 
-- [ ] T031 [P] [US2] Write Bats test in tests/graphql_batch.bats: verify fallback on GraphQL error response
-- [ ] T032 [P] [US2] Write Bats test in tests/graphql_batch.bats: verify fallback on GraphQL timeout
-- [ ] T033 [P] [US2] Write Bats test in tests/graphql_batch.bats: verify fallback on missing GraphQL fields (GHES <3.4 simulation)
-- [ ] T034 [P] [US2] Update tests/timeout.bats: add GraphQL timeout handling test
-- [ ] T035 [P] [US2] Run `make test` - new fallback tests should FAIL (fallback logic not yet implemented)
+- [ ] T031 [P] [US2] Write Bats test in tests/graphql_batch.bats: verify `--use-rest` flag bypasses GraphQL
+- [ ] T032 [P] [US2] Write Bats test in tests/graphql_batch.bats: verify `LOG_CI_FORCE_REST=1` bypasses GraphQL
+- [ ] T033 [P] [US2] Write Bats test in tests/graphql_batch.bats: verify `--use-rest` works with `--concurrency` flag
+- [ ] T034 [P] [US2] Update tests/help.bats: verify `--use-rest` flag appears in help text
+- [ ] T035 [P] [US2] Run `make test` - new REST mode tests should FAIL (flag already added in Phase 2, just needs verification logic)
 
 ### Implementation for User Story 2
 
-- [ ] T036 [US2] Add error detection in `fetch_checks_graphql()`: check for `errors` key in JSON response
-- [ ] T037 [US2] Add error detection in `fetch_checks_graphql()`: check for missing data structure (`data.repository.ref.target.history.nodes`)
-- [ ] T038 [US2] Add error detection in `fetch_checks_graphql()`: check for non-zero exit code from `gh api graphql`
-- [ ] T039 [US2] Implement fallback logic in main loop: if GraphQL fails, set `USE_REST=1` and execute REST code path
-- [ ] T040 [US2] Add debug logging for fallback: `[GraphQL fallback to REST]` when `LOG_CI_CACHE_DEBUG=1`
-- [ ] T041 [US2] Test fallback with invalid GraphQL field (simulate GHES <3.4): verify REST API used
-- [ ] T042 [US2] Test fallback with GraphQL timeout: set `--api-timeout 1` and verify REST fallback
-- [ ] T043 [US2] Run `make test` - all tests including fallback tests MUST pass
-- [ ] T044 [US2] Update README.md: document GHES compatibility and automatic fallback (add to Features section)
-- [ ] T045 [US2] Update AGENTS.md: document fallback strategy and error detection logic
+- [ ] T036 [US2] Verify `--use-rest` flag parsing works correctly (already implemented in T006)
+- [ ] T037 [US2] Verify `LOG_CI_FORCE_REST` environment variable works (already implemented in T008)
+- [ ] T038 [US2] Verify REST code path remains unchanged and functional
+- [ ] T039 [US2] Test with `--use-rest --concurrency 8`: verify parallel REST calls work
+- [ ] T040 [US2] Test with `LOG_CI_FORCE_REST=1`: verify GraphQL bypassed
+- [ ] T041 [US2] Test GraphQL error handling: verify clear error message suggests --use-rest flag
+- [ ] T042 [US2] Run `make test` - all tests including REST mode tests MUST pass
+- [ ] T043 [US2] Update README.md: document `--use-rest` flag and `LOG_CI_FORCE_REST` env var, GHES <3.4 compatibility
+- [ ] T044 [US2] Update AGENTS.md: document when to use REST mode vs GraphQL mode
 
-**Checkpoint**: User Story 2 complete - automatic fallback working, GHES compatibility ensured
-
----
-
-## Phase 5: User Story 3 - Maintain Performance with Parallel Processing (Priority: P3)
-
-**Goal**: Provide `--use-rest` flag for users who prefer REST API mode with existing parallel processing
-
-**Independent Test**: Run `gh log-ci --use-rest --concurrency 4` and verify parallel REST calls work with concurrency control
-
-### Tests for User Story 3 (REQUIRED per Constitution) ⚠️
-
-> **NOTE: Write these tests FIRST, ensure they FAIL before implementation**
-
-- [ ] T046 [P] [US3] Write Bats test in tests/graphql_batch.bats: verify `--use-rest` flag bypasses GraphQL
-- [ ] T047 [P] [US3] Write Bats test in tests/graphql_batch.bats: verify `LOG_CI_FORCE_REST=1` bypasses GraphQL
-- [ ] T048 [P] [US3] Write Bats test in tests/graphql_batch.bats: verify `--use-rest` works with `--concurrency` flag
-- [ ] T049 [P] [US3] Update tests/help.bats: verify `--use-rest` flag appears in help text
-- [ ] T050 [P] [US3] Run `make test` - new REST mode tests should FAIL (flag already added in Phase 2, just needs verification logic)
-
-### Implementation for User Story 3
-
-- [ ] T051 [US3] Verify `--use-rest` flag parsing works correctly (already implemented in T006)
-- [ ] T052 [US3] Verify `LOG_CI_FORCE_REST` environment variable works (already implemented in T008)
-- [ ] T053 [US3] Add conditional in main loop: if `USE_REST == 1`, skip GraphQL attempt entirely
-- [ ] T054 [US3] Verify REST code path (existing lines ~274-350) remains unchanged and functional
-- [ ] T055 [US3] Test with `--use-rest --concurrency 8`: verify parallel REST calls work
-- [ ] T056 [US3] Test with `LOG_CI_FORCE_REST=1`: verify GraphQL bypassed
-- [ ] T057 [US3] Run `make test` - all tests including REST mode tests MUST pass
-- [ ] T058 [US3] Update README.md: document `--use-rest` flag and `LOG_CI_FORCE_REST` env var in Configuration section
-- [ ] T059 [US3] Update AGENTS.md: document when to use REST mode vs GraphQL mode
-
-**Checkpoint**: User Story 3 complete - users have option to force REST mode if needed
+**Checkpoint**: User Story 2 complete - users have explicit REST mode option, GHES compatibility documented
 
 ---
 
-## Phase 6: Polish & Cross-Cutting Concerns
+## Phase 5: Polish & Cross-Cutting Concerns
 
 **Purpose**: Final integration, performance validation, documentation completeness
 
 ### Integration & Testing
 
-- [ ] T060 [P] Run full test suite: `make test` (shellcheck + all bats tests)
-- [ ] T061 [P] Verify cache behavior with GraphQL: run twice, second run should use cache
-- [ ] T062 [P] Update tests/cache_success.bats: verify caching works identically with GraphQL responses
-- [ ] T063 [P] Test with `--no-cache` flag: verify GraphQL query executed even for cached commits
-- [ ] T064 [P] Test watch mode with GraphQL: `gh log-ci --watch --watch-interval 5`
-- [ ] T065 Test edge case: commits with >100 check runs (document limitation if needed)
+- [ ] T045 [P] Run full test suite: `make test` (shellcheck + all bats tests)
+- [ ] T046 [P] Verify cache behavior with GraphQL: run twice, second run should use cache
+- [ ] T047 [P] Update tests/cache_success.bats: verify caching works identically with GraphQL responses
+- [ ] T048 [P] Test with `--no-cache` flag: verify GraphQL query executed even for cached commits
+- [ ] T049 [P] Test watch mode with GraphQL: `gh log-ci --watch --watch-interval 5`
+- [ ] T050 Test edge case: commits with >100 check runs (document limitation if needed)
+- [ ] T051 Test edge case: commits with no check runs (verify ❔ icon displayed)
+- [ ] T052 Test edge case: very old commits (verify behavior with archived workflow runs)
 - [ ] T066 Test edge case: GraphQL returns partial results (some commits missing check data)
 - [ ] T067 Test blocked queued detection with GraphQL response (🔁 icon)
 

@@ -98,7 +98,7 @@ $ gh log-ci
 |------------|-------------|
 | Auto branch | Detects default branch, falls back to master/main/HEAD |
 | Status aggregation | Smarter overall icon (pending vs all-green vs mixed failure) |
-| GraphQL batch query | Single batch query fetches all commit statuses (automatic fallback to REST) |
+| GraphQL batch query | Single batch query fetches all commit statuses (use --use-rest for REST API mode) |
 | Per-check summaries | Optional detailed list via `--checks` / `LOG_CI_SHOW_CHECKS=1` |
 | Parallel fetching | Concurrency-controlled API calls (`--concurrency`) |
 | Colorized log | Mirrors `git log` pretty format with colors |
