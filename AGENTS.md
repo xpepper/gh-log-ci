@@ -7,9 +7,9 @@ gh-log-ci is a GitHub CLI extension that displays CI status next to commit logs.
 ## Architecture
 
 - **Single Bash script**: The entire functionality is in `gh-log-ci` (~620 lines)
-- **GitHub API integration**: Uses GraphQL API v4 for batch queries (automatic fallback to REST API v3)
+- **GitHub API integration**: Uses GraphQL API v4 for batch queries (explicit REST API v3 mode via `--use-rest`)
 - **Caching system**: Success-only caching with TTL to reduce API calls
-- **Parallel processing**: Configurable concurrency for REST API fallback
+- **Parallel processing**: Configurable concurrency for REST API mode
 - **Watch mode**: Continuous polling with configurable intervals
 
 ### API Strategy
@@ -17,9 +17,16 @@ gh-log-ci is a GitHub CLI extension that displays CI status next to commit logs.
   - Query structure: Repository → Ref → Target → History(limit) → CheckSuites(100) → CheckRuns(100)
   - Reduces API calls from N to 1 (93% reduction for 15 commits)
   - Transformation: GraphQL JSON → jq → TSV → existing aggregation logic
+  - **When to use**: Default mode, optimal for GitHub.com and GitHub Enterprise Server ≥ 3.4
 - **REST API mode**: Per-commit API calls with concurrency control (lines 475-553)
   - Manual override: `--use-rest` flag or `LOG_CI_FORCE_REST=1` environment variable
-  - Used when GraphQL is unavailable (GHES <3.4) or user preference
+  - **When to use**:
+    - GitHub Enterprise Server < 3.4 (GraphQL Checks API unavailable)
+    - Commits with >100 check suites (GraphQL query limit)
+    - GraphQL API errors or timeouts
+    - Debugging or comparing GraphQL vs REST behavior
+  - Concurrency controlled via `--concurrency` flag (default: 4 parallel requests)
+- **Error handling**: GraphQL errors fail fast with clear error messages suggesting `--use-rest` flag
 - **Response handling**: Both APIs use identical status aggregation and icon mapping logic
 
 ## Development Workflow

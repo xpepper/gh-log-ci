@@ -36,6 +36,7 @@ gh log-ci
   --watch                Continuously poll and update commit statuses
   --watch-interval <s>   Seconds between polls in watch mode (default: 10; env LOG_CI_WATCH_INTERVAL)
   --no-cache             Ignore success cache, force fresh API calls for all commits
+  --use-rest             Force REST API mode, bypass GraphQL (env LOG_CI_FORCE_REST=1)
   --help, -h             Show help / usage
   --version              Show version
 ```
@@ -55,6 +56,7 @@ Options:
   --checks, -C           Show per-check run summaries
   --no-spinner           Disable loading spinner (env LOG_CI_NO_SPINNER=1)
   --api-timeout <secs>   Max seconds per API request (default: 30; env LOG_CI_API_TIMEOUT)
+  --use-rest             Force REST API mode, bypass GraphQL (env LOG_CI_FORCE_REST=1)
   --help, -h             Show this help text
   --version              Show version
   --no-cache             Ignore success cache, force fresh API calls for all commits
@@ -132,8 +134,33 @@ gh auth login
 1. Determines branch (see order above).
 2. Fetches commits from `origin/<branch>`.
 3. Emits a tab-delimited `git log` for the last 15 commits.
-4. For each commit, calls REST endpoint `/repos/{owner}/{repo}/commits/{sha}/check-runs`.
-5. Maps combined conclusions to an icon and prints decorated line.
+4. **GraphQL batch query (default)**: Executes a single GraphQL query to fetch check run status for all commits at once (reduces API calls by ~93% for 15 commits).
+5. **REST API mode (explicit)**: Use `--use-rest` flag or `LOG_CI_FORCE_REST=1` to make individual REST API calls per commit instead. Required for:
+   - GitHub Enterprise Server versions < 3.4 (GraphQL Checks API unavailable)
+   - Commits with >100 check suites (GraphQL query limit)
+   - Troubleshooting or comparing GraphQL vs REST behavior
+6. Maps combined conclusions to an icon and prints decorated line.
+
+### When to Use REST Mode
+
+By default, `gh log-ci` uses GraphQL batch queries for optimal performance. Use REST mode (`--use-rest` or `LOG_CI_FORCE_REST=1`) when:
+
+- **GitHub Enterprise Server < 3.4**: GraphQL Checks API not available on older GHES versions
+- **Commits with >100 check suites**: GraphQL query limited to 100 check suites per commit
+- **GraphQL errors**: If you encounter GraphQL API errors, the tool will suggest using `--use-rest` as a workaround
+- **Debugging**: Comparing behavior between GraphQL and REST API responses
+
+Example:
+```shell
+# Force REST API mode with flag
+gh log-ci --use-rest
+
+# Force REST API mode with environment variable
+LOG_CI_FORCE_REST=1 gh log-ci
+
+# Combine with other options
+gh log-ci --use-rest --concurrency 8 --limit 20
+```
 
 ## Configuration (Current)
 - Branch: positional argument or `--branch` (auto-detected if omitted).
@@ -145,6 +172,7 @@ gh auth login
 - Watch mode: `--watch` continuously refresh; `--watch-interval <s>` (default 10) or `LOG_CI_WATCH_INTERVAL`.
 - Success cache (success-only): TTL `LOG_CI_CACHE_TTL` (default 86400s / 24h); directory `LOG_CI_CACHE_DIR` (default ~/.cache/gh-log-ci); debug `LOG_CI_CACHE_DEBUG=1`.
 - Cache bypass: `--no-cache` to force fresh API calls for all commits.
+- REST API mode: `--use-rest` flag or `LOG_CI_FORCE_REST=1` to bypass GraphQL (required for GHES <3.4).
 
 ## Limitations
 - Per-check summaries increase output size (consider piping/grep).
