@@ -146,27 +146,17 @@ if [[ "$WATCH" -eq 1 ]]; then
   fi
 fi
 
-# Detect if USER_BRANCH is actually a commit SHA
-is_commit_sha() {
-  local ref="$1"
-  [[ -z "$ref" ]] && return 1
-  # Try to resolve as commit SHA (supports full and short SHAs)
-  git rev-parse --verify --quiet "$ref^{commit}" >/dev/null 2>&1
-}
-
 # Check if USER_BRANCH is a commit SHA
 IS_COMMIT_MODE=0
 COMMIT_SHA=""
-if [[ -n "$USER_BRANCH" ]] && is_commit_sha "$USER_BRANCH"; then
-  IS_COMMIT_MODE=1
-  # Resolve to full SHA for consistency
-  COMMIT_SHA=$(git rev-parse --verify "$USER_BRANCH^{commit}" 2>/dev/null)
-  if [[ -z "$COMMIT_SHA" ]]; then
-    echo "Error: Unable to resolve commit SHA: $USER_BRANCH" >&2
-    exit 1
+if [[ -n "$USER_BRANCH" ]]; then
+  # Try to resolve as commit SHA (supports full and short SHAs)
+  COMMIT_SHA=$(git rev-parse --verify --quiet "$USER_BRANCH^{commit}" 2>/dev/null || true)
+  if [[ -n "$COMMIT_SHA" ]]; then
+    IS_COMMIT_MODE=1
+    # In commit mode, we don't need a branch
+    BRANCH=""
   fi
-  # In commit mode, we don't need a branch
-  BRANCH=""
 fi
 
 # Determine branch (BRANCH variable) using auto-detect if USER_BRANCH empty
