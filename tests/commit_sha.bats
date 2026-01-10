@@ -42,3 +42,12 @@ setup() {
   STATUS_LINES=$(echo "$output" | grep -E '^[✅❌🕓🚫❔⏲🔁]' | wc -l)
   [ "$STATUS_LINES" -eq 1 ]
 }
+
+@test "does not emit remote branch warning for commit SHA" {
+  SHA=$(git rev-parse HEAD~1)
+  run "$SCRIPT" "$SHA" --use-rest
+  [ "$status" -eq 0 ]
+  # Critical: no warning should appear
+  [[ "$output" != *"Warning: Remote branch"* ]]
+  [[ "$output" != *"not found on origin"* ]]
+}
