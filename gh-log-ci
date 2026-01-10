@@ -154,31 +154,19 @@ is_commit_sha() {
   git rev-parse --verify --quiet "$ref^{commit}" >/dev/null 2>&1
 }
 
-# Check if input looks like a SHA (hexadecimal, 7-40 chars)
-looks_like_sha() {
-  local ref="$1"
-  [[ "$ref" =~ ^[0-9a-fA-F]{7,40}$ ]]
-}
-
 # Check if USER_BRANCH is a commit SHA
 IS_COMMIT_MODE=0
 COMMIT_SHA=""
-if [[ -n "$USER_BRANCH" ]]; then
-  if is_commit_sha "$USER_BRANCH"; then
-    IS_COMMIT_MODE=1
-    # Resolve to full SHA for consistency
-    COMMIT_SHA=$(git rev-parse --verify "$USER_BRANCH^{commit}" 2>/dev/null)
-    if [[ -z "$COMMIT_SHA" ]]; then
-      echo "Error: Unable to resolve commit SHA: $USER_BRANCH" >&2
-      exit 1
-    fi
-    # In commit mode, we don't need a branch
-    BRANCH=""
-  elif looks_like_sha "$USER_BRANCH"; then
-    # Looks like a SHA but isn't valid
-    echo "Error: Invalid commit SHA: $USER_BRANCH" >&2
+if [[ -n "$USER_BRANCH" ]] && is_commit_sha "$USER_BRANCH"; then
+  IS_COMMIT_MODE=1
+  # Resolve to full SHA for consistency
+  COMMIT_SHA=$(git rev-parse --verify "$USER_BRANCH^{commit}" 2>/dev/null)
+  if [[ -z "$COMMIT_SHA" ]]; then
+    echo "Error: Unable to resolve commit SHA: $USER_BRANCH" >&2
     exit 1
   fi
+  # In commit mode, we don't need a branch
+  BRANCH=""
 fi
 
 # Determine branch (BRANCH variable) using auto-detect if USER_BRANCH empty
@@ -198,16 +186,6 @@ if [[ "$IS_COMMIT_MODE" -eq 0 ]]; then
       else
         BRANCH="$(git rev-parse --abbrev-ref HEAD 2>/dev/null || echo master)"
       fi
-    fi
-  fi
-  # Validate that the branch exists (if user-specified)
-  if [[ -n "$USER_BRANCH" ]]; then
-    # Check if branch exists locally or remotely
-    if ! git show-ref --verify --quiet "refs/heads/$BRANCH" && \
-       ! git show-ref --verify --quiet "refs/remotes/origin/$BRANCH" && \
-       ! git ls-remote --exit-code origin "$BRANCH" &>/dev/null; then
-      echo "Error: Branch '$BRANCH' not found" >&2
-      exit 1
     fi
   fi
 fi
