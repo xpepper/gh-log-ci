@@ -146,20 +146,68 @@ if [[ "$WATCH" -eq 1 ]]; then
   fi
 fi
 
-# Determine branch (BRANCH variable) using auto-detect if USER_BRANCH empty
+# Detect if USER_BRANCH is actually a commit SHA
+is_commit_sha() {
+  local ref="$1"
+  [[ -z "$ref" ]] && return 1
+  # Try to resolve as commit SHA (supports full and short SHAs)
+  git rev-parse --verify --quiet "$ref^{commit}" >/dev/null 2>&1
+}
+
+# Check if input looks like a SHA (hexadecimal, 7-40 chars)
+looks_like_sha() {
+  local ref="$1"
+  [[ "$ref" =~ ^[0-9a-fA-F]{7,40}$ ]]
+}
+
+# Check if USER_BRANCH is a commit SHA
+IS_COMMIT_MODE=0
+COMMIT_SHA=""
 if [[ -n "$USER_BRANCH" ]]; then
-  BRANCH="$USER_BRANCH"
-else
-  GH_DEFAULT_BRANCH="$(gh repo view --json defaultBranchRef --jq .defaultBranchRef.name 2>/dev/null || true)"
-  if [[ -n "${GH_DEFAULT_BRANCH}" ]]; then
-    BRANCH="${GH_DEFAULT_BRANCH}"
+  if is_commit_sha "$USER_BRANCH"; then
+    IS_COMMIT_MODE=1
+    # Resolve to full SHA for consistency
+    COMMIT_SHA=$(git rev-parse --verify "$USER_BRANCH^{commit}" 2>/dev/null)
+    if [[ -z "$COMMIT_SHA" ]]; then
+      echo "Error: Unable to resolve commit SHA: $USER_BRANCH" >&2
+      exit 1
+    fi
+    # In commit mode, we don't need a branch
+    BRANCH=""
+  elif looks_like_sha "$USER_BRANCH"; then
+    # Looks like a SHA but isn't valid
+    echo "Error: Invalid commit SHA: $USER_BRANCH" >&2
+    exit 1
+  fi
+fi
+
+# Determine branch (BRANCH variable) using auto-detect if USER_BRANCH empty
+# Skip branch detection if we're in commit SHA mode
+if [[ "$IS_COMMIT_MODE" -eq 0 ]]; then
+  if [[ -n "$USER_BRANCH" ]]; then
+    BRANCH="$USER_BRANCH"
   else
-    if git show-ref --verify --quiet refs/heads/master || git ls-remote --exit-code origin master &>/dev/null; then
-      BRANCH="master"
-    elif git show-ref --verify --quiet refs/heads/main || git ls-remote --exit-code origin main &>/dev/null; then
-      BRANCH="main"
+    GH_DEFAULT_BRANCH="$(gh repo view --json defaultBranchRef --jq .defaultBranchRef.name 2>/dev/null || true)"
+    if [[ -n "${GH_DEFAULT_BRANCH}" ]]; then
+      BRANCH="${GH_DEFAULT_BRANCH}"
     else
-      BRANCH="$(git rev-parse --abbrev-ref HEAD 2>/dev/null || echo master)"
+      if git show-ref --verify --quiet refs/heads/master || git ls-remote --exit-code origin master &>/dev/null; then
+        BRANCH="master"
+      elif git show-ref --verify --quiet refs/heads/main || git ls-remote --exit-code origin main &>/dev/null; then
+        BRANCH="main"
+      else
+        BRANCH="$(git rev-parse --abbrev-ref HEAD 2>/dev/null || echo master)"
+      fi
+    fi
+  fi
+  # Validate that the branch exists (if user-specified)
+  if [[ -n "$USER_BRANCH" ]]; then
+    # Check if branch exists locally or remotely
+    if ! git show-ref --verify --quiet "refs/heads/$BRANCH" && \
+       ! git show-ref --verify --quiet "refs/remotes/origin/$BRANCH" && \
+       ! git ls-remote --exit-code origin "$BRANCH" &>/dev/null; then
+      echo "Error: Branch '$BRANCH' not found" >&2
+      exit 1
     fi
   fi
 fi
@@ -185,10 +233,13 @@ fi
 CACHE_FILE="$CACHE_DIR/${OWNER}_${REPO}_success.cache"
 
 # Ensure we have remote branch; fetch quietly, tolerate missing remote branch gracefully.
-if git ls-remote --exit-code origin "$BRANCH" &>/dev/null; then
-  git fetch origin "$BRANCH" --quiet
-else
-  echo "Warning: Remote branch '$BRANCH' not found on origin. Using local branch if available." >&2
+# Skip this check if we're in commit SHA mode
+if [[ "$IS_COMMIT_MODE" -eq 0 ]]; then
+  if git ls-remote --exit-code origin "$BRANCH" &>/dev/null; then
+    git fetch origin "$BRANCH" --quiet
+  else
+    echo "Warning: Remote branch '$BRANCH' not found on origin. Using local branch if available." >&2
+  fi
 fi
 
  # Build a format with: <plain SHA><TAB><colored pretty message>
@@ -294,17 +345,27 @@ run_once() {
   declare -A LINE_MAP
   declare -A SHA_MAP
   declare -A SUCCESS_CACHE
-  # Determine ref to log: prefer origin/<branch> if it exists, else local branch
-  LOG_REF="origin/$BRANCH"
-  if ! git show-ref --verify --quiet "refs/remotes/$LOG_REF"; then
-    # fallback to local branch name
-    LOG_REF="$BRANCH"
+  # Determine ref to log: use commit SHA if in commit mode, else branch
+  if [[ "$IS_COMMIT_MODE" -eq 1 ]]; then
+    LOG_REF="$COMMIT_SHA"
+  else
+    # Determine ref to log: prefer origin/<branch> if it exists, else local branch
+    LOG_REF="origin/$BRANCH"
+    if ! git show-ref --verify --quiet "refs/remotes/$LOG_REF"; then
+      # fallback to local branch name
+      LOG_REF="$BRANCH"
+    fi
+  fi
+  # In commit mode, show only 1 commit; otherwise use LIMIT
+  ACTUAL_LIMIT="$LIMIT"
+  if [[ "$IS_COMMIT_MODE" -eq 1 ]]; then
+    ACTUAL_LIMIT=1
   fi
   while IFS=$'\t' read -r SHA MESSAGE; do
     LINE_MAP[$INDEX]="$MESSAGE"
     SHA_MAP[$INDEX]="$SHA"
     INDEX=$((INDEX+1))
-  done < <(git log "$LOG_REF" --color=always --pretty="$FORMAT" -n "$LIMIT")
+  done < <(git log "$LOG_REF" --color=always --pretty="$FORMAT" -n "$ACTUAL_LIMIT")
 
   # Prepare cache (success-only)
   if [[ ! -d "$CACHE_DIR" ]]; then
@@ -334,14 +395,15 @@ run_once() {
       else
         COMPLETED=0
       fi
-      printf "\r%s Fetching CI statuses... %d/%d" "${frames[$i]}" "$COMPLETED" "$TOTAL"
+      printf "\r%s Fetching CI statuses... %d/%d" "${frames[$i]}" "$COMPLETED" "$TOTAL" >&2
       i=$(((i+1)%${#frames[@]}))
       sleep 0.1
     done
   }
 
   trap '[[ -n "${SPINNER_PID:-}" ]] && kill "$SPINNER_PID" 2>/dev/null || true' INT TERM
-  if [[ "$NO_SPINNER" -ne 1 ]]; then
+  # Only show spinner if stderr is a TTY (interactive terminal)
+  if [[ "$NO_SPINNER" -ne 1 ]] && [[ -t 2 ]]; then
     spinner &
     SPINNER_PID=$!
   fi
@@ -576,7 +638,7 @@ run_once() {
   if [[ -n "${SPINNER_PID:-}" && "$NO_SPINNER" -ne 1 ]]; then
     kill "$SPINNER_PID" 2>/dev/null || true
     wait "$SPINNER_PID" 2>/dev/null || true
-    printf "\r%-60s\r" ""
+    printf "\r%-60s\r" "" >&2
   fi
   # Build map of in-progress workflow/check names
   declare -A INPROGRESS_NAMES
