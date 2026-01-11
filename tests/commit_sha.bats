@@ -53,8 +53,17 @@ setup() {
 }
 
 @test "works with GraphQL mode (without --use-rest)" {
-  # Use origin/master to ensure commit exists on remote (GraphQL requires remote commits)
-  SHA=$(git rev-parse origin/master)
+  # Detect which default branch exists (master or main)
+  DEFAULT_BRANCH=""
+  if git rev-parse origin/master >/dev/null 2>&1; then
+    DEFAULT_BRANCH="origin/master"
+  elif git rev-parse origin/main >/dev/null 2>&1; then
+    DEFAULT_BRANCH="origin/main"
+  else
+    skip "No default remote branch (master or main) found"
+  fi
+
+  SHA=$(git rev-parse "$DEFAULT_BRANCH")
   run "$SCRIPT" "$SHA"
   [ "$status" -eq 0 ]
   [[ "$output" == *"${SHA:0:7}"* ]]
