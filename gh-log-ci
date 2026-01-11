@@ -157,12 +157,20 @@ fi
 IS_COMMIT_MODE=0
 COMMIT_SHA=""
 if [[ -n "$USER_BRANCH" ]]; then
-  # Try to resolve as commit SHA (supports full and short SHAs)
-  COMMIT_SHA=$(git rev-parse --verify --quiet "$USER_BRANCH^{commit}" 2>/dev/null || true)
-  if [[ -n "$COMMIT_SHA" ]]; then
-    IS_COMMIT_MODE=1
-    # In commit mode, we don't need a branch
-    BRANCH=""
+  # First check if it's a branch reference (to avoid ambiguity with commit SHAs)
+  # If it resolves as a local or remote branch, treat it as a branch name
+  if git show-ref --verify --quiet "refs/heads/$USER_BRANCH" 2>/dev/null || \
+     git show-ref --verify --quiet "refs/remotes/origin/$USER_BRANCH" 2>/dev/null; then
+    # It's a branch, not a commit SHA
+    IS_COMMIT_MODE=0
+  else
+    # Try to resolve as commit SHA (supports full and short SHAs)
+    COMMIT_SHA=$(git rev-parse --verify --quiet "$USER_BRANCH^{commit}" 2>/dev/null || true)
+    if [[ -n "$COMMIT_SHA" ]]; then
+      IS_COMMIT_MODE=1
+      # In commit mode, we don't need a branch
+      BRANCH=""
+    fi
   fi
 fi
 

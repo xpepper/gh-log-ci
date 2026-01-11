@@ -12,8 +12,9 @@ setup() {
 # We simulate caching by running twice; second run should be faster and show cache hits (if debug enabled)
 @test "uses seeded cache for success" {
   export LOG_CI_CACHE_DEBUG=1
-  FULL_SHA=$(git rev-parse HEAD)
-  SHORT_SHA=$(git rev-parse --short HEAD)
+  # Use remote HEAD (origin/master or origin/main) since branch mode shows remote commits
+  FULL_SHA=$(git rev-parse origin/master 2>/dev/null || git rev-parse origin/main 2>/dev/null)
+  SHORT_SHA=$(git rev-parse --short "$FULL_SHA")
   TS=$(date +%s)
   REMOTE_URL=$(git remote get-url origin 2>/dev/null)
   OWNER="unknown"; REPO="unknown"
@@ -30,8 +31,9 @@ setup() {
 
 @test "ignores cache when --no-cache flag is used" {
   export LOG_CI_CACHE_DEBUG=1
-  FULL_SHA=$(git rev-parse HEAD)
-  SHORT_SHA=$(git rev-parse --short HEAD)
+  # Use remote HEAD (origin/master or origin/main) since branch mode shows remote commits
+  FULL_SHA=$(git rev-parse origin/master 2>/dev/null || git rev-parse origin/main 2>/dev/null)
+  SHORT_SHA=$(git rev-parse --short "$FULL_SHA")
   TS=$(date +%s)
   REMOTE_URL=$(git remote get-url origin 2>/dev/null)
   OWNER="unknown"; REPO="unknown"
