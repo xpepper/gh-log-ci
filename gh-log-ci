@@ -421,6 +421,13 @@ run_once() {
   fi
 
   TOTAL=$INDEX
+
+  # Validate that we got commits before proceeding
+  if [[ "$TOTAL" -eq 0 ]]; then
+    echo "Error: No commits found. Invalid branch or commit SHA." >&2
+    exit 1
+  fi
+
   TMPDIR=$(mktemp -d 2>/dev/null || mktemp -d -t ghlogci)
 
   spinner() {
