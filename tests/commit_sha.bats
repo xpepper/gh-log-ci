@@ -51,3 +51,15 @@ setup() {
   [[ "$output" != *"Warning: Remote branch"* ]]
   [[ "$output" != *"not found on origin"* ]]
 }
+
+@test "works with GraphQL mode (without --use-rest)" {
+  # Use origin/master to ensure commit exists on remote (GraphQL requires remote commits)
+  SHA=$(git rev-parse origin/master)
+  run "$SCRIPT" "$SHA"
+  [ "$status" -eq 0 ]
+  [[ "$output" == *"${SHA:0:7}"* ]]
+  [[ "$output" != *"Warning:"* ]]
+  # Should show exactly 1 status line
+  STATUS_LINES=$(echo "$output" | grep -E '^[✅❌🕓🚫❔⏲🔁]' | wc -l)
+  [ "$STATUS_LINES" -eq 1 ]
+}
