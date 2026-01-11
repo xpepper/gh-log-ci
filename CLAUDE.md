@@ -29,6 +29,10 @@ make clean-cache
 make run
 # or
 ./gh-log-ci
+
+# Testing commit SHA mode
+./gh-log-ci 7b60fc9           # Show status for specific commit
+./gh-log-ci $(git rev-parse HEAD~5)  # Use full SHA
 ```
 
 # Architecture Overview
@@ -36,6 +40,18 @@ make run
 This is a **single Bash script** (`gh-log-ci`) that implements a GitHub CLI extension. The script fetches CI status for commits via GitHub Checks API and displays them inline with git log output.
 
 ## Key Design Patterns
+
+**Commit SHA Detection (lines 156-167):**
+- Detects if positional argument is a valid commit SHA (full or short)
+- Uses `git rev-parse --verify` to validate and resolve SHAs
+- Skips branch detection and remote fetch when in commit mode
+- Sets `IS_COMMIT_MODE=1` and `COMMIT_SHA=<resolved-full-sha>`
+
+**Single Commit Mode:**
+- GraphQL query uses `repository.object(expression: $sha)` instead of `ref.target.history`
+- Git log uses `git log $COMMIT_SHA -n 1` instead of branch-based log
+- No remote branch warnings or unnecessary output
+- Functions: `fetch_checks_graphql_commit()` (lines 293-334) and `transform_graphql_response_commit()` (lines 336-348)
 
 **Caching System (lines 234-248, 336-342):**
 - Success-only caching: only commits with ALL checks passing are cached

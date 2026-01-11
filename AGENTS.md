@@ -4,9 +4,11 @@
 
 gh-log-ci is a GitHub CLI extension that displays CI status next to commit logs. It shows recent commits with inline summary icons indicating GitHub Check/Actions status (green, failing, pending, or cancelled).
 
+- **Commit SHA mode**: Display CI status for a single specific commit by providing SHA as argument
+
 ## Architecture
 
-- **Single Bash script**: The entire functionality is in `gh-log-ci` (637 lines)
+- **Single Bash script**: The entire functionality is in `gh-log-ci` (753 lines)
 - **GitHub API integration**: Uses GraphQL API v4 for batch queries (explicit REST API v3 mode via `--use-rest`)
 - **Caching system**: Success-only caching with TTL to reduce API calls
 - **Parallel processing**: Configurable concurrency for REST API mode
@@ -72,12 +74,15 @@ make run
 
 ### Main Script (`gh-log-ci`)
 - **Argument parsing**: Lines 70-119 handle CLI flags and environment variables
-- **Branch detection**: Lines 146-162 auto-detect branch using GitHub API and git fallbacks
-- **Remote URL parsing**: Lines 171-179 extract owner/repo from GitHub URLs
+- **Commit SHA detection**: Lines 156-167 detect and validate commit SHAs
+- **Branch detection**: Lines 169-185 auto-detect branch using GitHub API and git fallbacks (skipped in commit mode)
+- **Remote URL parsing**: Lines 194-202 extract owner/repo from GitHub URLs
 - **GraphQL functions**: Lines 221-290 handle batch query, transformation, and grouping
   - `fetch_checks_graphql()`: Execute GraphQL batch query with timeout
   - `transform_graphql_response()`: Convert nested JSON to TSV format
   - `group_by_sha()`: Extract check runs for specific commit SHA
+  - `fetch_checks_graphql_commit()`: Execute GraphQL query for single commit (lines 293-334)
+  - `transform_graphql_response_commit()`: Convert single commit JSON to TSV format (lines 336-348)
 - **Cache management**: Lines 310-323 read cache with TTL validation
 - **Main loop integration**: Lines 303-622 GraphQL or REST mode (controlled by --use-rest flag)
 - **Status aggregation**: Shared logic reused for both GraphQL and REST responses
@@ -91,6 +96,11 @@ make run
 - **Cache directory**: `~/.cache/gh-log-ci/` or configurable via `LOG_CI_CACHE_DIR`
 - **Cache bypass**: `--no-cache` flag forces fresh API calls
 
+### Commit SHA Mode
+- **SHA detection**: Lines 156-167 detect and validate commit SHAs
+- **Single commit GraphQL**: `fetch_checks_graphql_commit()` and `transform_graphql_response_commit()` functions
+- **Conditional logic**: `IS_COMMIT_MODE` flag controls branch vs commit mode throughout script
+
 ### Testing Structure
 - **help.bats**: Tests CLI help and argument validation
 - **cache_success.bats**: Tests caching functionality
@@ -98,6 +108,7 @@ make run
 - **watch_flags.bats**: Tests watch mode functionality
 - **pending_icon.bats**: Tests pending status display and cache validation (prevents bug where pending builds showed ✅)
 - **graphql_batch.bats**: Tests GraphQL query construction, transformation, and fallback behavior
+- **commit_sha.bats**: Tests commit SHA detection, validation, and status display
 
 ## Environment Variables
 
