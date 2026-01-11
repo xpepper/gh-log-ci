@@ -47,7 +47,7 @@ $ gh log-ci --help
 gh log-ci - show CI status next to recent commits
 
 Usage:
-  gh log-ci [options] [<branch>]
+  gh log-ci [options] [<branch>|<commit-sha>]
 
 Options:
   --branch <name>        Branch to inspect (alternative to positional <branch>)
@@ -72,6 +72,27 @@ Branch resolution order when no argument is provided:
 2. `master` if present
 3. `main` if present
 4. Current local HEAD branch
+
+### Commit SHA Mode
+
+You can also pass a commit SHA (full or short) to check the CI status of a single commit:
+
+```shell
+# Full commit SHA
+gh log-ci 1055e83327fe2415e117ec67fbc8412f9093504f
+
+# Short commit SHA (at least 7 characters)
+gh log-ci 1055e83
+
+# Using git rev-parse output
+gh log-ci $(git rev-parse HEAD~5)
+```
+
+In commit SHA mode:
+- Shows exactly 1 commit (the specified SHA)
+- No remote branch warnings
+- Works with both GraphQL (default) and REST API modes (`--use-rest`)
+- Accepts both full 40-character SHAs and short SHAs (≥7 characters)
 
 
 ## Output Example
@@ -99,6 +120,7 @@ $ gh log-ci
 | Capability | Description |
 |------------|-------------|
 | Auto branch | Detects default branch, falls back to master/main/HEAD |
+| Commit SHA mode | Check CI status for a single commit by SHA (full or short) |
 | Status aggregation | Smarter overall icon (pending vs all-green vs mixed failure) |
 | GraphQL batch query | Single batch query fetches all commit statuses (use --use-rest for REST API mode) |
 | Per-check summaries | Optional detailed list via `--checks` / `LOG_CI_SHOW_CHECKS=1` |
@@ -131,10 +153,10 @@ gh auth login
 ```
 
 ## How It Works
-1. Determines branch (see order above).
-2. Fetches commits from `origin/<branch>`.
-3. Emits a tab-delimited `git log` for the last 15 commits.
-4. **GraphQL batch query (default)**: Executes a single GraphQL query to fetch check run status for all commits at once (reduces API calls by ~93% for 15 commits).
+1. Determines input type (branch name or commit SHA).
+2. **For branch mode**: Fetches commits from `origin/<branch>`. **For commit SHA mode**: Validates and resolves the SHA.
+3. Emits a tab-delimited `git log` (single commit for SHA mode, last 15 for branch mode).
+4. **GraphQL batch query (default)**: Executes a single GraphQL query to fetch check run status for all commits at once (reduces API calls by ~93% for 15 commits). For commit SHA mode, queries the specific commit object.
 5. **REST API mode (explicit)**: Use `--use-rest` flag or `LOG_CI_FORCE_REST=1` to make individual REST API calls per commit instead. Required for:
    - GitHub Enterprise Server versions < 3.4 (GraphQL Checks API unavailable)
    - Commits with >100 check suites (GraphQL query limit)
