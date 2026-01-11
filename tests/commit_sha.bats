@@ -64,7 +64,21 @@ setup() {
   fi
 
   SHA=$(git rev-parse "$DEFAULT_BRANCH")
+
+  # Debug: check if gh CLI is available
+  if ! command -v gh >/dev/null 2>&1; then
+    skip "gh CLI not installed (required for GraphQL mode)"
+  fi
+
   run "$SCRIPT" "$SHA"
+
+  # Debug: print output if test fails
+  if [ "$status" -ne 0 ]; then
+    echo "DEBUG: Script exited with status $status" >&3
+    echo "DEBUG: Output was:" >&3
+    echo "$output" >&3
+  fi
+
   [ "$status" -eq 0 ]
   [[ "$output" == *"${SHA:0:7}"* ]]
   [[ "$output" != *"Warning:"* ]]
