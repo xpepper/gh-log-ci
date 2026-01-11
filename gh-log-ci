@@ -10,7 +10,7 @@ show_help() {
 gh log-ci - show CI status next to recent commits
 
 Usage:
-  gh log-ci [options] [<branch>]
+  gh log-ci [options] [<branch>|<commit-sha>]
 
  Options:
    --branch <name>        Branch to inspect (alternative to positional <branch>)
@@ -22,16 +22,23 @@ Usage:
    --watch                Continuously poll and update commit statuses
    --watch-interval <s>   Seconds between polls in watch mode (default: 10; env LOG_CI_WATCH_INTERVAL)
    --no-cache             Ignore success cache, force fresh API calls for all commits
-  --use-rest             Force REST API mode, bypass GraphQL (env LOG_CI_FORCE_REST=1)
+   --use-rest             Force REST API mode, bypass GraphQL (env LOG_CI_FORCE_REST=1)
+
 Branch auto-detect order when <branch> not supplied:
   1. GitHub default branch (via gh repo view)
   2. master (if exists)
   3. main (if exists)
   4. current HEAD branch
 
+Commit SHA mode:
+  When a valid commit SHA (full or short) is provided as the first argument,
+  gh log-ci displays status for that single commit only.
+
 Examples:
   gh log-ci                                  # auto-detect branch
   gh log-ci main                             # explicit positional branch
+  gh log-ci 7b60fc9                          # show status for single commit
+  gh log-ci abc123def                        # works with full SHAs too
   gh log-ci --branch develop --limit 30
   gh log-ci -c 8 -n 50                       # increase parallelism and number of commits
   LOG_CI_SHOW_CHECKS=1 gh log-ci -n 10       # show per-check summaries (env)

@@ -63,3 +63,14 @@ setup() {
   STATUS_LINES=$(echo "$output" | grep -E '^[✅❌🕓🚫❔⏲🔁]' | wc -l)
   [ "$STATUS_LINES" -eq 1 ]
 }
+
+@test "help shows commit SHA usage" {
+  run "$SCRIPT" --help
+  [ "$status" -eq 0 ]
+  # Usage line should show both branch and commit-sha options
+  [[ "$output" == *"<branch>|<commit-sha>"* ]]
+  # Should have a dedicated section explaining commit SHA mode
+  [[ "$output" == *"Commit SHA mode:"* ]]
+  # Examples should show commit SHA usage
+  [[ "$output" == *"gh log-ci 7b60fc9"* ]]
+}
