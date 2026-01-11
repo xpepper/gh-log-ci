@@ -53,17 +53,9 @@ setup() {
 }
 
 @test "works with GraphQL mode (without --use-rest)" {
-  # Detect which default branch exists (master or main)
-  DEFAULT_BRANCH=""
-  if git rev-parse origin/master >/dev/null 2>&1; then
-    DEFAULT_BRANCH="origin/master"
-  elif git rev-parse origin/main >/dev/null 2>&1; then
-    DEFAULT_BRANCH="origin/main"
-  else
-    skip "No default remote branch (master or main) found"
-  fi
-
-  SHA=$(git rev-parse "$DEFAULT_BRANCH")
+  # Use an older commit to ensure GitHub GraphQL has indexed it
+  # HEAD~5 should be old enough to have CI/check runs and be indexed
+  SHA=$(git rev-parse HEAD~5)
 
   # Debug: check if gh CLI is available
   if ! command -v gh >/dev/null 2>&1; then
