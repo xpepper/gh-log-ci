@@ -53,20 +53,25 @@ setup() {
 }
 
 @test "works with GraphQL mode (without --use-rest)" {
-  # Use an older commit to ensure GitHub GraphQL has indexed it
-  # HEAD~5 should be old enough to have CI/check runs and be indexed
-  SHA=$(git rev-parse HEAD~5)
+  # Use a known commit that exists on remote and has been indexed
+  # Using a specific commit SHA that's known to work
+  SHA="1055e83327fe2415e117ec67fbc8412f9093504f"
 
   # Debug: check if gh CLI is available
   if ! command -v gh >/dev/null 2>&1; then
     skip "gh CLI not installed (required for GraphQL mode)"
   fi
 
+  # Debug: verify gh auth
+  echo "DEBUG: gh auth status:" >&3
+  gh auth status 2>&1 | head -5 >&3 || true
+
   run "$SCRIPT" "$SHA"
 
   # Debug: print output if test fails
   if [ "$status" -ne 0 ]; then
     echo "DEBUG: Script exited with status $status" >&3
+    echo "DEBUG: SHA used: $SHA" >&3
     echo "DEBUG: Output was:" >&3
     echo "$output" >&3
   fi
