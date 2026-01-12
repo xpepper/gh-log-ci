@@ -314,8 +314,10 @@ query($owner: String!, $repo: String!, $sha: String!) {
     object(expression: $sha) {
       ... on Commit {
         oid
+        committedDate
         checkSuites(first: 100) {
           nodes {
+            createdAt
             checkRuns(first: 100) {
               nodes {
                 name
@@ -363,17 +365,23 @@ transform_graphql_response() {
   ' <<< "$response" 2>/dev/null || true
 }
 
-# Transform single-commit GraphQL response to flat TSV format
+# Transform single-commit GraphQL response to flat TSV format with exclusion flag
 transform_graphql_response_commit() {
   local response="$1"
+  local time_filter_seconds="${TIME_FILTER_SECONDS:-14400}"
 
-  jq -r '
+  jq -r --argjson filter_seconds "$time_filter_seconds" '
     .data.repository.object as $commit |
     $commit.oid as $sha |
+    $commit.committedDate as $commitDate |
     (
       $commit.checkSuites.nodes[]? |
+      # Calculate time difference in seconds
+      (((.createdAt | fromdateiso8601) - ($commitDate | fromdateiso8601)) | floor) as $timeDiff |
+      # Mark as excluded if created beyond threshold
+      (if $timeDiff > $filter_seconds then 1 else 0 end) as $excluded |
       .checkRuns.nodes[]? |
-      [$sha, .name, (.status // "" | ascii_downcase), (.conclusion // "" | ascii_downcase)]
+      [$sha, .name, (.status // "" | ascii_downcase), (.conclusion // "" | ascii_downcase), $excluded]
     ) |
     @tsv
   ' <<< "$response" 2>/dev/null || true
