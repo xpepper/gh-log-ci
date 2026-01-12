@@ -594,10 +594,10 @@ run_once() {
                 if [[ "$EXCLUDED" == "1" ]]; then
                   # Still display if -C flag is used
                   if [[ "$SHOW_CHECKS" == "1" ]]; then
-                    ICON_RUN="⏱"  # Clock icon to indicate late-running check
+                    ICON_RUN="🤖"  # Robot icon for non-push workflows
                     SHORT_NAME="$NAME"
                     [[ ${#SHORT_NAME} -gt 40 ]] && SHORT_NAME="${SHORT_NAME:0:37}..."
-                    DETAIL_OUTPUT+="    • $ICON_RUN $SHORT_NAME ($STATUS${CONCLUSION:+/$CONCLUSION}) [excluded]\n"
+                    DETAIL_OUTPUT+="    • $ICON_RUN $SHORT_NAME ($STATUS${CONCLUSION:+/$CONCLUSION}) [non-push]\n"
                   fi
                   continue  # Skip aggregation logic below
                 fi
