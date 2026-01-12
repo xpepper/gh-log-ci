@@ -74,6 +74,16 @@ This is a **single Bash script** (`gh-log-ci`) that implements a GitHub CLI exte
 - Clears screen between iterations for clean display
 - Integrates with caching to avoid redundant API calls
 
+**Time-Based Filtering (lines 67-68, 342-388, 579-592):**
+- Filters check suites by creation time relative to commit time
+- Default threshold: 4 hours after commit (14400 seconds)
+- Adds EXCLUDED flag (0 or 1) as 5th TSV column
+- Prevents scheduled/periodic workflows from affecting commit status icon
+- Excluded checks still displayed with `-C` flag, marked with ⏱ icon
+- Configurable via `LOG_CI_TIME_FILTER_HOURS` environment variable
+- Applied in both `transform_graphql_response()` and `transform_graphql_response_commit()`
+- REST mode marks all checks as EXCLUDED=0 (limitation: no suite timestamps)
+
 # Testing Notes
 
 - **Bats tests** are in `tests/` directory

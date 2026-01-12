@@ -101,6 +101,16 @@ make run
 - **Single commit GraphQL**: `fetch_checks_graphql_commit()` and `transform_graphql_response_commit()` functions
 - **Conditional logic**: `IS_COMMIT_MODE` flag controls branch vs commit mode throughout script
 
+### Time-Based Filtering
+- **Purpose**: Exclude scheduled workflows from status aggregation while keeping them visible
+- **Implementation**: Add EXCLUDED flag (5th TSV column) based on suite `createdAt` vs commit `committedDate`
+- **Default threshold**: 4 hours (14400 seconds)
+- **Display behavior**: Excluded checks shown with ⏱ icon and `[excluded]` label when using `-C`
+- **Aggregation**: Checks with EXCLUDED=1 skipped when computing overall status icon
+- **Configuration**: `LOG_CI_TIME_FILTER_HOURS` environment variable
+- **GraphQL functions**: `transform_graphql_response()` and `transform_graphql_response_commit()`
+- **REST mode limitation**: All checks marked EXCLUDED=0 (suite timestamps not available in REST API)
+
 ### Testing Structure
 - **help.bats**: Tests CLI help and argument validation
 - **cache_success.bats**: Tests caching functionality
@@ -109,6 +119,7 @@ make run
 - **pending_icon.bats**: Tests pending status display and cache validation (prevents bug where pending builds showed ✅)
 - **graphql_batch.bats**: Tests GraphQL query construction, transformation, and fallback behavior
 - **commit_sha.bats**: Tests commit SHA detection, validation, and status display
+- **time_filter.bats**: Tests time-based filtering logic in jq transformations
 
 ## Environment Variables
 
@@ -121,6 +132,7 @@ make run
 - `LOG_CI_CACHE_TTL`: Cache TTL in seconds (default: 86400)
 - `LOG_CI_CACHE_DIR`: Cache directory path
 - `LOG_CI_CACHE_DEBUG`: Enable cache debugging output
+- `LOG_CI_TIME_FILTER_HOURS`: Maximum hours between commit and check suite creation (default: 4)
 - `LOG_CI_FORCE_REST`: Force REST API mode (default: 0, set to 1 to bypass GraphQL)
 
 ## Important Implementation Details
