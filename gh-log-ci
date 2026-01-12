@@ -670,8 +670,12 @@ run_once() {
       RAW_LINES=$(run_with_timeout "$API_TIMEOUT" gh api "/repos/$OWNER/$REPO/commits/$SHA/check-runs" --jq '.check_runs[] | [.name, (.status // ""), (.conclusion // "" )] | @tsv' 2>/dev/null || true)
       success_count=0; fail_count=0; cancel_count=0; pending_count=0; other_count=0; total_count=0
       DETAIL_OUTPUT=""
+      # Note: REST API mode doesn't provide check suite timestamps in check-runs endpoint
+      # For now, all checks are included in aggregation (EXCLUDED=0)
+      # Use GraphQL mode for accurate time-based filtering
       if [[ -n "$RAW_LINES" && "$RAW_LINES" != "__TIMEOUT__" ]]; then
         while IFS=$'\t' read -r NAME STATUS CONCLUSION; do
+          EXCLUDED="0"  # REST mode: all checks included for now (no suite timestamp available)
           total_count=$((total_count+1))
           ICON_RUN=""
           if [[ -z "$CONCLUSION" && "$STATUS" != "completed" ]]; then
