@@ -114,6 +114,7 @@ $ gh log-ci
 | ⚠ | Mixed: successes and failures both present |
 | ⏲ | Timed out while fetching check runs (API didn't respond within --api-timeout) |
 | ➖ | Neutral/skipped/stale (shown only in per-check detail) |
+| 🤖 | Non-push workflow (excluded from status aggregation) |
 | ❔ | Fallback / unknown state |
 
 ## Features
@@ -132,28 +133,17 @@ $ gh log-ci
 | Watch mode | Continuously polls to surface new commits and evolving statuses (`--watch`, `--watch-interval`) |
 | Success caching | Skips API calls for commits already successful within TTL (success-only, configurable) |
 | Blocked detection | Distinguishes queued runs blocked by in-progress workflow (🔁 icon) |
-| Time-based filtering | Excludes scheduled workflows from status aggregation while keeping them visible with `-C` |
+| Event-based filtering | Excludes non-push workflows from status aggregation while keeping them visible with `-C` |
 
-## Time-Based Filtering
+## Event-Based Filtering
 
-By default, `gh-log-ci` only includes check suites created within 4 hours of the commit when computing the overall status icon. This prevents scheduled workflows (like Dependabot running at 3 AM) from incorrectly marking commits as failed.
+By default, `gh-log-ci` only includes check runs triggered by `push` events when computing the overall status icon. This prevents scheduled workflows (like Dependabot with `event: "dynamic"`) from incorrectly marking commits as failed.
 
-GitHub associates check suites with the HEAD commit at run time, not the commit that triggered the suite. Without time filtering, scheduled workflows would affect the status of otherwise successful commits.
+GitHub associates check suites with the HEAD commit at run time, not the commit that triggered the suite. Without event filtering, workflows triggered by other events would affect the status of otherwise successful commits.
 
-**Excluded checks are still displayed** when using the `-C` flag, marked with a ⏱ icon and `[excluded]` label for visibility.
+**Excluded checks are still displayed** when using the `-C` flag, marked with a 🤖 icon and `[non-push]` label for visibility.
 
-Configure the threshold with `LOG_CI_TIME_FILTER_HOURS`:
-
-```bash
-# Strict: only checks within 1 hour
-LOG_CI_TIME_FILTER_HOURS=1 gh log-ci
-
-# Permissive: checks within 24 hours
-LOG_CI_TIME_FILTER_HOURS=24 gh log-ci
-
-# Disable filtering: include all checks
-LOG_CI_TIME_FILTER_HOURS=999999 gh log-ci
-```
+This behavior matches GitHub's `statusCheckRollup` logic, which only includes checks from `push` events.
 
 ## Permissions
 
@@ -216,7 +206,7 @@ gh log-ci --use-rest --concurrency 8 --limit 20
 - Watch mode: `--watch` continuously refresh; `--watch-interval <s>` (default 10) or `LOG_CI_WATCH_INTERVAL`.
 - Success cache (success-only): TTL `LOG_CI_CACHE_TTL` (default 86400s / 24h); directory `LOG_CI_CACHE_DIR` (default ~/.cache/gh-log-ci); debug `LOG_CI_CACHE_DEBUG=1`.
 - Cache bypass: `--no-cache` to force fresh API calls for all commits.
-- Time filtering: `LOG_CI_TIME_FILTER_HOURS` (default 4) excludes check suites created beyond threshold from status aggregation; excluded checks displayed with `-C`.
+- Event-based filtering: Non-push workflows excluded from status aggregation; excluded checks displayed with `-C` marked as `[non-push]`.
 - REST API mode: `--use-rest` flag or `LOG_CI_FORCE_REST=1` to bypass GraphQL (required for GHES <3.4).
 
 ## Limitations
