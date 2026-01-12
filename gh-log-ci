@@ -47,6 +47,11 @@ Examples:
   gh log-ci --watch --watch-interval 30      # watch mode with custom interval
 
 Additional environment:
+  LOG_CI_TIME_FILTER_HOURS
+      Maximum hours between commit and check suite creation (default: 4).
+      Check suites created after this threshold are excluded from status
+      aggregation but still displayed with -C flag marked as [excluded].
+      Prevents scheduled workflows from affecting commit status.
   LOG_CI_WATCH_INTERVAL   Override default poll interval (10)
   LOG_CI_WATCH_ONCE=1     Internal/testing: run only one watch iteration then exit
 
