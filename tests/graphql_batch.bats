@@ -47,7 +47,7 @@ teardown() {
 @test "transformation of GraphQL response to TSV format" {
   # Test that transform_graphql_response() converts nested JSON to flat TSV with exclusion flag
 
-  # Sample GraphQL response with committedDate and createdAt
+  # Sample GraphQL response with workflowRun.event
   local sample_json='{
     "data": {
       "repository": {
@@ -62,6 +62,9 @@ teardown() {
                     "nodes": [
                       {
                         "createdAt": "2025-01-12T10:00:05Z",
+                        "workflowRun": {
+                          "event": "push"
+                        },
                         "checkRuns": {
                           "nodes": [
                             {
@@ -84,7 +87,7 @@ teardown() {
   }'
 
   # Expected TSV output: SHA<TAB>NAME<TAB>status<TAB>conclusion<TAB>excluded
-  # Note: status and conclusion should be lowercase, excluded=0 for checks within threshold
+  # Note: status and conclusion should be lowercase, excluded=0 for push events
   expected="abc123	build	completed	success	0"
 
   # Source the script to load the function
