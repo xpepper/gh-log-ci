@@ -69,8 +69,6 @@ CONCURRENCY="${LOG_CI_CONCURRENCY:-4}"
 SHOW_CHECKS="${LOG_CI_SHOW_CHECKS:-0}"
 NO_SPINNER="${LOG_CI_NO_SPINNER:-0}"
 API_TIMEOUT="${LOG_CI_API_TIMEOUT:-30}"
-TIME_FILTER_HOURS="${LOG_CI_TIME_FILTER_HOURS:-4}"
-TIME_FILTER_SECONDS=$((TIME_FILTER_HOURS * 3600))
 WATCH=0
 WATCH_INTERVAL="${LOG_CI_WATCH_INTERVAL:-10}"
 CACHE_TTL="${LOG_CI_CACHE_TTL:-86400}" # seconds (default 24h)
@@ -355,20 +353,17 @@ query($owner: String!, $repo: String!, $sha: String!) {
 # T015: Transform GraphQL nested response to flat TSV format with exclusion flag
 transform_graphql_response() {
   local response="$1"
-  local time_filter_seconds="${TIME_FILTER_SECONDS:-14400}"
 
   # Transform nested GraphQL JSON to flat TSV with exclusion flag
-  # Format: SHA<TAB>NAME<TAB>STATUS<TAB>CONCLUSION<TAB>EXCLUDED (0=include, 1=exclude from aggregation)
-  jq -r --argjson filter_seconds "$time_filter_seconds" '
+  # Format: SHA<TAB>NAME<TAB>STATUS<TAB>CONCLUSION<TAB>EXCLUDED (0=push event, 1=non-push event)
+  jq -r '
     .data.repository.ref.target.history.nodes[]? as $commit |
     $commit.oid as $sha |
-    $commit.committedDate as $commitDate |
     (
       $commit.checkSuites.nodes[]? |
-      # Calculate time difference in seconds
-      (((.createdAt | fromdateiso8601) - ($commitDate | fromdateiso8601)) | floor) as $timeDiff |
-      # Mark as excluded if created beyond threshold
-      (if $timeDiff > $filter_seconds then 1 else 0 end) as $excluded |
+      # Mark as excluded if workflow event is not "push" (or if workflowRun is null)
+      (.workflowRun.event // "unknown") as $event |
+      (if $event != "push" then 1 else 0 end) as $excluded |
       .checkRuns.nodes[]? |
       [$sha, .name, (.status // "" | ascii_downcase), (.conclusion // "" | ascii_downcase), $excluded]
     ) |
@@ -379,18 +374,15 @@ transform_graphql_response() {
 # Transform single-commit GraphQL response to flat TSV format with exclusion flag
 transform_graphql_response_commit() {
   local response="$1"
-  local time_filter_seconds="${TIME_FILTER_SECONDS:-14400}"
 
-  jq -r --argjson filter_seconds "$time_filter_seconds" '
+  jq -r '
     .data.repository.object as $commit |
     $commit.oid as $sha |
-    $commit.committedDate as $commitDate |
     (
       $commit.checkSuites.nodes[]? |
-      # Calculate time difference in seconds
-      (((.createdAt | fromdateiso8601) - ($commitDate | fromdateiso8601)) | floor) as $timeDiff |
-      # Mark as excluded if created beyond threshold
-      (if $timeDiff > $filter_seconds then 1 else 0 end) as $excluded |
+      # Mark as excluded if workflow event is not "push" (or if workflowRun is null)
+      (.workflowRun.event // "unknown") as $event |
+      (if $event != "push" then 1 else 0 end) as $excluded |
       .checkRuns.nodes[]? |
       [$sha, .name, (.status // "" | ascii_downcase), (.conclusion // "" | ascii_downcase), $excluded]
     ) |
