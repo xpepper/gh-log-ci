@@ -279,6 +279,9 @@ query($owner: String!, $repo: String!, $branch: String!, $limit: Int!) {
               checkSuites(first: 100) {
                 nodes {
                   createdAt
+                  workflowRun {
+                    event
+                  }
                   checkRuns(first: 100) {
                     nodes {
                       name
@@ -323,6 +326,9 @@ query($owner: String!, $repo: String!, $sha: String!) {
         checkSuites(first: 100) {
           nodes {
             createdAt
+            workflowRun {
+              event
+            }
             checkRuns(first: 100) {
               nodes {
                 name
