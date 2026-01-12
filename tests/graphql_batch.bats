@@ -45,9 +45,9 @@ teardown() {
 }
 
 @test "transformation of GraphQL response to TSV format" {
-  # Test that transform_graphql_response() converts nested JSON to flat TSV
+  # Test that transform_graphql_response() converts nested JSON to flat TSV with exclusion flag
 
-  # Sample GraphQL response
+  # Sample GraphQL response with committedDate and createdAt
   local sample_json='{
     "data": {
       "repository": {
@@ -57,9 +57,11 @@ teardown() {
               "nodes": [
                 {
                   "oid": "abc123",
+                  "committedDate": "2025-01-12T10:00:00Z",
                   "checkSuites": {
                     "nodes": [
                       {
+                        "createdAt": "2025-01-12T10:00:05Z",
                         "checkRuns": {
                           "nodes": [
                             {
@@ -81,9 +83,9 @@ teardown() {
     }
   }'
 
-  # Expected TSV output: SHA<TAB>NAME<TAB>status<TAB>conclusion
-  # Note: status and conclusion should be lowercase
-  expected="abc123	build	completed	success"
+  # Expected TSV output: SHA<TAB>NAME<TAB>status<TAB>conclusion<TAB>excluded
+  # Note: status and conclusion should be lowercase, excluded=0 for checks within threshold
+  expected="abc123	build	completed	success	0"
 
   # Source the script to load the function
   # Extract just the function definition to avoid running the whole script
