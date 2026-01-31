@@ -1,5 +1,10 @@
 # Architecture
 
+**Context Marker**: When working with this file, add `📐` to your start-of-message markers.
+
+**Example**:
+"🍀 📐 I'm reviewing the architecture of gh-log-cli"
+
 ## Overview
 
 - **Single Bash script**: The entire functionality is in `gh-log-ci` (753 lines)

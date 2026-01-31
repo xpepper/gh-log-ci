@@ -1,5 +1,10 @@
 # Testing
 
+**Context Marker**: When working with this file, add `💉` to your start-of-message markers.
+
+**Example**:
+"🍀 💉 I'm working on the testing suite of gh-log-cli"
+
 ## Test Structure
 
 - **help.bats**: Tests CLI help and argument validation

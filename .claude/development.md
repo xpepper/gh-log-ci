@@ -1,5 +1,10 @@
 # Development Workflow
 
+**Context Marker**: When working with this file, add `🧑‍💻` to your start-of-message markers.
+
+**Example**:
+"🍀 🧑‍💻 I'm working on the development workflow of gh-log-cli"
+
 ## Active Technologies
 
 - Bash (compatible with `/usr/bin/env bash`)

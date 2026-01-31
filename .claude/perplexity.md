@@ -1,5 +1,10 @@
 # Web Search via Perplexity CLI
 
+**Context Marker**: When working with this file, add `🔎` to your start-of-message markers.
+
+**Example**:
+"🍀 🔎 I'm performing a web search using Perplexity CLI"
+
 When you need to search the web, look up documentation, research a topic, or answer a question that requires up-to-date information, use the `llm` CLI with the Perplexity plugin instead of MCP tools.
 
 ## Prerequisites

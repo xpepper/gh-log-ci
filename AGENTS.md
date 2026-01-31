@@ -6,7 +6,12 @@ gh-log-ci is a GitHub CLI extension that displays CI status next to commit logs.
 
 This is a **single Bash script** (`gh-log-ci`) that implements the extension, fetching CI status via GitHub Checks API and displaying it inline with git log output.
 
-- **Commit SHA mode**: Display CI status for a single specific commit by providing SHA as argument
+To get more info, just run `./gh-log-ci --help`.
+
+**Context Marker**: When working with this file, add `🪵` to your start-of-message markers.
+
+**Example**:
+"🍀 🪵 Let's implement the requested feature..."
 
 ## Quick Reference
 
