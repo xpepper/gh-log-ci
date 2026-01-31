@@ -1,4 +1,4 @@
-# AGENTS.md
+# gh-log-ci Development Guidelines
 
 ## Project Overview
 
@@ -32,6 +32,13 @@ gh-log-ci is a GitHub CLI extension that displays CI status next to commit logs.
 - **Response handling**: Both APIs use identical status aggregation and icon mapping logic
 
 ## Development Workflow
+
+### Active Technologies
+
+- Bash (compatible with `/usr/bin/env bash`)
+- `gh` CLI (GitHub CLI)
+- `git`
+- `jq` (JSON processor via gh)
 
 ### Testing
 - **Shellcheck**: Static analysis for Bash scripts
