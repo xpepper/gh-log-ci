@@ -4,7 +4,7 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 @AGENTS.md
 
-# Common Development Commands
+## Common Development Commands
 
 ```bash
 # Run all tests (shellcheck + bats)
@@ -35,57 +35,25 @@ make run
 ./gh-log-ci $(git rev-parse HEAD~5)  # Use full SHA
 ```
 
-# Architecture Overview
+## Architecture Overview
 
 This is a **single Bash script** (`gh-log-ci`) that implements a GitHub CLI extension. The script fetches CI status for commits via GitHub Checks API and displays them inline with git log output.
 
-## Key Design Patterns
+**Key Design Patterns:**
 
-**Commit SHA Detection (lines 156-167):**
-- Detects if positional argument is a valid commit SHA (full or short)
-- Uses `git rev-parse --verify` to validate and resolve SHAs
-- Skips branch detection and remote fetch when in commit mode
-- Sets `IS_COMMIT_MODE=1` and `COMMIT_SHA=<resolved-full-sha>`
+- **Commit SHA Detection**: Validates and resolves SHAs using `git rev-parse --verify`
+- **Caching**: Success-only caching with three-condition validation (icon + no timeout + no pending)
+- **Event-Based Filtering**: Excludes non-push workflows from status aggregation
+- **Parallel Processing**: Configurable concurrency for REST API mode
+- **Watch Mode**: Continuous polling with screen clearing
 
-**Single Commit Mode:**
-- GraphQL query uses `repository.object(expression: $sha)` instead of `ref.target.history`
-- Git log uses `git log $COMMIT_SHA -n 1` instead of branch-based log
-- No remote branch warnings or unnecessary output
-- Functions: `fetch_checks_graphql_commit()` (lines 293-334) and `transform_graphql_response_commit()` (lines 336-348)
+For detailed technical implementation, see [Architecture](.claude/architecture.md).
 
-**Caching System (lines 234-248, 336-342):**
-- Success-only caching: only commits with ALL checks passing are cached
-- Cache validation requires three conditions: `OVERALL_ICON=="✅"` AND `RAW_LINES!="__TIMEOUT__"` AND `pending_count==0`
-- Prevents displaying incorrect success icons for commits with pending builds
-- TTL-based expiration (default 24h)
-
-**Parallel Processing (lines 274-350):**
-- Background processes with configurable concurrency limit
-- Temporary directory for parallel output coordination
-- Waits for all background jobs to complete before aggregation
-
-**Status Aggregation (lines 290-326):**
-- Priority order: failure > cancelled > pending > success
-- Special handling for "blocked" queued runs (🔁 icon) vs normal pending
-- Maps GitHub check conclusions to emoji icons
-
-**Watch Mode (lines 365-378):**
-- Continuous polling loop with configurable interval
-- Clears screen between iterations for clean display
-- Integrates with caching to avoid redundant API calls
-
-**Event-Based Filtering (lines 67-68, 342-388, 579-592):**
-- Filters check suites by `workflowRun.event` type (excludes non-push events)
-- Adds EXCLUDED flag (0 or 1) as 5th TSV column based on `event != "push"`
-- Prevents scheduled/periodic workflows from affecting commit status icon
-- Excluded checks still displayed with `-C` flag, marked with 🤖 icon and `[non-push]` label
-- Applied in both `transform_graphql_response()` and `transform_graphql_response_commit()`
-- REST mode marks all checks as EXCLUDED=0 (limitation: no event type data)
-- Matches GitHub's `statusCheckRollup` behavior (only includes push events)
-
-# Testing Notes
+## Testing Notes
 
 - **Bats tests** are in `tests/` directory
 - Tests expect to run from the project root (script path is `$(pwd)/gh-log-ci`)
 - Each test file covers a specific feature area (help, cache, timeout, watch, pending)
 - Cache tests verify the critical pending_count validation that prevents incorrect success icons
+
+For complete test structure and environment variables, see [Testing](.claude/testing.md).
