@@ -385,15 +385,6 @@ transform_graphql_response_commit() {
   ' <<< "$response" 2>/dev/null || true
 }
 
-# T016: Group TSV lines by commit SHA for aggregation
-group_by_sha() {
-  local tsv_data="$1"
-  local sha="$2"
-
-  # Extract lines for specific SHA
-  grep "^${sha}" <<< "$tsv_data" | cut -f2- || true
-}
-
 run_once() {
   INDEX=0
   declare -A LINE_MAP
@@ -560,6 +551,20 @@ run_once() {
       echo "[GraphQL] Success - processing $(echo "$GRAPHQL_TSV" | wc -l) check runs" >&2
     fi
 
+    # Pre-process GraphQL TSV into an associative array for O(1) lookups
+    declare -A GRAPHQL_DATA_MAP
+    if [[ -n "$GRAPHQL_TSV" ]]; then
+      while IFS=$'\t' read -r G_SHA G_REST; do
+        if [[ -n "$G_SHA" ]]; then
+          if [[ -z "${GRAPHQL_DATA_MAP[$G_SHA]:-}" ]]; then
+            GRAPHQL_DATA_MAP[$G_SHA]="$G_REST"
+          else
+            GRAPHQL_DATA_MAP[$G_SHA]+=$'\n'"$G_REST"
+          fi
+        fi
+      done <<< "$GRAPHQL_TSV"
+    fi
+
     # Process each commit with GraphQL data
     for i in $(seq 0 $((TOTAL-1))); do
             SHA="${SHA_MAP[$i]}"
@@ -574,8 +579,8 @@ run_once() {
               continue
             fi
 
-            # Extract check runs for this commit from GraphQL TSV
-            RAW_LINES=$(group_by_sha "$GRAPHQL_TSV" "$SHA")
+            # Extract check runs for this commit from pre-processed map
+            RAW_LINES="${GRAPHQL_DATA_MAP[$SHA]:-}"
 
             # T021: Aggregate status using existing logic
             success_count=0; fail_count=0; cancel_count=0; pending_count=0; other_count=0; total_count=0

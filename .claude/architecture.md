@@ -42,7 +42,7 @@
 - **GraphQL functions**: Lines 221-290 handle batch query, transformation, and grouping
   - `fetch_checks_graphql()`: Execute GraphQL batch query with timeout
   - `transform_graphql_response()`: Convert nested JSON to TSV format
-  - `group_by_sha()`: Extract check runs for specific commit SHA
+  - Parses GraphQL TSV into an associative array for O(1) commit data lookups (eliminates `group_by_sha` O(N*M) lookup)
   - `fetch_checks_graphql_commit()`: Execute GraphQL query for single commit (lines 293-334)
   - `transform_graphql_response_commit()`: Convert single commit JSON to TSV format (lines 336-348)
 - **Cache management**: Lines 310-323 read cache with TTL validation
