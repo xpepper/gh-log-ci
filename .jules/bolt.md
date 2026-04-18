@@ -1,0 +1,3 @@
+## 2025-05-15 - Avoid grep inside loops for data processing
+**Learning:** Avoid calling `grep` or similar filtering tools inside loops over large datasets (O(N*M)) as spawning subprocesses within a loop degrades performance. Bash 4 associative arrays are a more efficient way to process data.
+**Action:** Parse data once into associative arrays for O(1) lookups whenever processing nested or grouping relationships within a dataset.
