@@ -346,32 +346,17 @@ query($owner: String!, $repo: String!, $sha: String!) {
 }
 
 # T015: Transform GraphQL nested response to flat TSV format with exclusion flag
+# Parameters:
+#   $1: GraphQL JSON response
+#   $2: Mode - "history" (default) or "commit"
 transform_graphql_response() {
   local response="$1"
+  local mode="${2:-history}"
 
   # Transform nested GraphQL JSON to flat TSV with exclusion flag
   # Format: SHA<TAB>NAME<TAB>STATUS<TAB>CONCLUSION<TAB>EXCLUDED (0=push event, 1=non-push event)
-  jq -r '
-    .data.repository.ref.target.history.nodes[]? as $commit |
-    $commit.oid as $sha |
-    (
-      $commit.checkSuites.nodes[]? |
-      # Mark as excluded if workflow event is not "push" (or if workflowRun is null)
-      (.workflowRun.event // "unknown") as $event |
-      (if $event != "push" then 1 else 0 end) as $excluded |
-      .checkRuns.nodes[]? |
-      [$sha, .name, (.status // "" | ascii_downcase), (.conclusion // "" | ascii_downcase), $excluded]
-    ) |
-    @tsv
-  ' <<< "$response" 2>/dev/null || true
-}
-
-# Transform single-commit GraphQL response to flat TSV format with exclusion flag
-transform_graphql_response_commit() {
-  local response="$1"
-
-  jq -r '
-    .data.repository.object as $commit |
+  jq -r --arg mode "$mode" '
+    (if $mode == "commit" then .data.repository.object else .data.repository.ref.target.history.nodes[]? end) as $commit |
     $commit.oid as $sha |
     (
       $commit.checkSuites.nodes[]? |
@@ -540,9 +525,9 @@ run_once() {
 
     # GraphQL succeeded, transform response
     if [[ "$IS_COMMIT_MODE" -eq 1 ]]; then
-      GRAPHQL_TSV=$(transform_graphql_response_commit "$GRAPHQL_RESPONSE")
+      GRAPHQL_TSV=$(transform_graphql_response "$GRAPHQL_RESPONSE" "commit")
     else
-      GRAPHQL_TSV=$(transform_graphql_response "$GRAPHQL_RESPONSE")
+      GRAPHQL_TSV=$(transform_graphql_response "$GRAPHQL_RESPONSE" "history")
     fi
 
     if [[ -z "$GRAPHQL_TSV" ]]; then
