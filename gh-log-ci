@@ -385,15 +385,6 @@ transform_graphql_response_commit() {
   ' <<< "$response" 2>/dev/null || true
 }
 
-# T016: Group TSV lines by commit SHA for aggregation
-group_by_sha() {
-  local tsv_data="$1"
-  local sha="$2"
-
-  # Extract lines for specific SHA
-  grep "^${sha}" <<< "$tsv_data" | cut -f2- || true
-}
-
 run_once() {
   INDEX=0
   declare -A LINE_MAP
@@ -560,6 +551,21 @@ run_once() {
       echo "[GraphQL] Success - processing $(echo "$GRAPHQL_TSV" | wc -l) check runs" >&2
     fi
 
+    # ⚡ Bolt Optimization: Parse GraphQL TSV into an associative array for O(1) lookups
+    # Avoids O(N*M) loop and slow grep/cut subprocesses
+    declare -A GRAPHQL_SHA_DATA
+    if [[ -n "$GRAPHQL_TSV" ]]; then
+      while IFS=$'\t' read -r G_SHA G_NAME G_STATUS G_CONCLUSION G_EXCLUDED; do
+        if [[ -n "$G_SHA" ]]; then
+          if [[ -z "${GRAPHQL_SHA_DATA[$G_SHA]:-}" ]]; then
+            GRAPHQL_SHA_DATA[$G_SHA]="$G_NAME"$'\t'"$G_STATUS"$'\t'"$G_CONCLUSION"$'\t'"$G_EXCLUDED"
+          else
+            GRAPHQL_SHA_DATA[$G_SHA]+=$'\n'"$G_NAME"$'\t'"$G_STATUS"$'\t'"$G_CONCLUSION"$'\t'"$G_EXCLUDED"
+          fi
+        fi
+      done <<< "$GRAPHQL_TSV"
+    fi
+
     # Process each commit with GraphQL data
     for i in $(seq 0 $((TOTAL-1))); do
             SHA="${SHA_MAP[$i]}"
@@ -575,7 +581,7 @@ run_once() {
             fi
 
             # Extract check runs for this commit from GraphQL TSV
-            RAW_LINES=$(group_by_sha "$GRAPHQL_TSV" "$SHA")
+            RAW_LINES="${GRAPHQL_SHA_DATA[$SHA]:-}"
 
             # T021: Aggregate status using existing logic
             success_count=0; fail_count=0; cancel_count=0; pending_count=0; other_count=0; total_count=0
