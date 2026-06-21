@@ -2,6 +2,21 @@
 
 set -euo pipefail
 
+# --- Bash version guard -----------------------------------------------------
+# This script uses associative arrays (declare -A), which require Bash 4.0+.
+# macOS ships Bash 3.2 as /bin/bash, so we fail fast with an actionable error
+# instead of the cryptic "declare: -A: invalid option" message.
+# NOTE: BASH_VERSINFO and (( )) arithmetic are supported in Bash 3.2, so this
+# check itself runs safely under older Bash.
+if (( BASH_VERSINFO[0] < 4 )); then
+  echo "Error: gh log-ci requires Bash 4.0 or newer (uses associative arrays / declare -A)." >&2
+  echo "       Detected Bash ${BASH_VERSION}." >&2
+  echo "       On macOS, install a newer Bash with:" >&2
+  echo "         brew install bash" >&2
+  echo "       Then ensure it is first on your PATH, or invoke it explicitly." >&2
+  exit 1
+fi
+
 PROGRAM="gh log-ci"
 VERSION="0.8.0"
 
