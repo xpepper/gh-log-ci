@@ -14,6 +14,13 @@
 
 `gh log-ci` works with GitHub.com and GitHub Enterprise Server (any version that supports Checks API).
 
+> **Requirements:** [GitHub CLI](https://cli.github.com/) and **Bash 4.0 or newer**.
+> macOS ships Bash 3.2 as the default `/bin/bash`; install a newer Bash first:
+> ```shell
+> brew install bash
+> ```
+> The script will detect an unsupported Bash and fail with an actionable error pointing you here.
+
 1. Install [GitHub CLI](https://cli.github.com/)
 2. Authenticate: `gh auth login`
 3. (Optional) Ensure you have access to private repos you care about
