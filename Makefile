@@ -6,6 +6,17 @@
 # Default cache directory
 CACHE_DIR ?= $(HOME)/.cache/gh-log-ci
 
+# On macOS, the system /bin/bash is 3.2 but the script requires Bash 4+
+# (associative arrays / declare -A). Prepend Homebrew's bin dir to PATH so
+# `bats` (and the script under test) pick up Bash 5 when available.
+# This is a no-op on Linux, where system bash is already 4+.
+EMPTY :=
+SPACE := $(EMPTY) $(EMPTY)
+HOMEBREW_BINS := $(wildcard /opt/homebrew/bin /usr/local/bin)
+ifneq ($(HOMEBREW_BINS),)
+  export PATH := $(subst $(SPACE),:,$(HOMEBREW_BINS)):$(PATH)
+endif
+
 # Default target
 .PHONY: help
 help: ## Show this help
