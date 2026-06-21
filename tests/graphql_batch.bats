@@ -142,8 +142,12 @@ teardown() {
   run ./gh-log-ci --limit 5 --branch "$BRANCH" --use-rest --concurrency 2 --no-cache
 
   [ "$status" -eq 0 ]
-  # Should display commit info (check for status icons)
-  [[ "$output" =~ ✅|❌|🕓 ]]
+  # Should display commit info (check for status icons).
+  # NOTE: must include ❔ (no checks) and 🚫 (cancelled) too, otherwise this
+  # test flakes for branches whose commits have no completed check runs visible
+  # to the token — e.g. a fresh PR branch in CI under the default GITHUB_TOKEN,
+  # which only sees ❔ for brand-new commits.
+  [[ "$output" =~ ✅|❌|🕓|🚫|❔ ]]
 }
 
 @test "--use-rest flag appears in help text" {
