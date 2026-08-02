@@ -61,16 +61,45 @@ Usage:
 
 Options:
   --branch <name>        Branch to inspect (alternative to positional <branch>)
-  --limit, -n <n>        Number of commits to display (default: 15; env LOG_CI_LIMIT)
-  --concurrency, -c <n>  Parallel API calls (default: 4; env LOG_CI_CONCURRENCY)
-  --checks, -C           Show per-check run summaries
+  --limit, -n <n>        Number of commits to display (default: 15; env LOG_CI_LIMIT overrides)
+  --concurrency, -c <n>  Max parallel API calls (default: 4; env LOG_CI_CONCURRENCY overrides)
+  --checks, -C           Show per-check run summaries beneath each commit (env LOG_CI_SHOW_CHECKS=1)
   --no-spinner           Disable loading spinner (env LOG_CI_NO_SPINNER=1)
   --api-timeout <secs>   Max seconds per API request (default: 30; env LOG_CI_API_TIMEOUT)
-  --use-rest             Force REST API mode, bypass GraphQL (env LOG_CI_FORCE_REST=1)
-  --help, -h             Show this help text
-  --version              Show version
+  --watch                Continuously poll and update commit statuses
+  --watch-interval <s>   Seconds between polls in watch mode (default: 10; env LOG_CI_WATCH_INTERVAL)
   --no-cache             Ignore success cache, force fresh API calls for all commits
+  --use-rest             Force REST API mode, bypass GraphQL (env LOG_CI_FORCE_REST=1)
 
+Branch auto-detect order when <branch> not supplied:
+  1. GitHub default branch (via gh repo view)
+  2. master (if exists)
+  3. main (if exists)
+  4. current HEAD branch
+
+Commit SHA mode:
+  When a valid commit SHA (full or short) is provided as the first argument,
+  gh log-ci displays status for that single commit only.
+
+Examples:
+  gh log-ci                                  # auto-detect branch
+  gh log-ci main                             # explicit positional branch
+  gh log-ci 7b60fc9                          # show status for single commit
+  gh log-ci abc123def                        # works with full SHAs too
+  gh log-ci --branch develop --limit 30
+  gh log-ci -c 8 -n 50                       # increase parallelism and number of commits
+  LOG_CI_SHOW_CHECKS=1 gh log-ci -n 10       # show per-check summaries (env)
+  gh log-ci -C --limit 5                     # show per-check summaries (flag)
+  gh log-ci --watch                          # watch mode (poll every 10s)
+  gh log-ci --watch --watch-interval 30      # watch mode with custom interval
+
+Additional environment:
+  LOG_CI_WATCH_INTERVAL   Override default poll interval (10)
+  LOG_CI_WATCH_ONCE=1     Internal/testing: run only one watch iteration then exit
+
+Exit codes:
+  0 success
+  1 setup or API error
 ```
 
 Specify a branch explicitly:
@@ -225,6 +254,9 @@ gh log-ci --use-rest --concurrency 8 --limit 20
 - No JSON / alternative formats yet.
 - Assumes `origin` remote name.
 - GraphQL queries limited to 100 check suites per commit (use `--use-rest` for commits with >100 suites).
+- GraphQL mode only knows about commits that exist on the remote. Querying a local-only
+  (unpushed) commit SHA fails with `GraphQL response missing expected data structure`; use
+  `--use-rest` for those.
 
 ## Roadmap
 - Rate-limit handling with backoff + user notice.
@@ -294,6 +326,7 @@ This tool is under active development. While stable for everyday use, expect new
 
 | Version | Date | Notes |
 |---------|------|-------|
+| 0.8.0 | 2026-01-11 | Commit SHA mode: check a single commit by full or short SHA, in both GraphQL and REST modes |
 | 0.7.0 | 2026-01-06 | GraphQL batch query (93% API call reduction); `--use-rest` flag for GHES <3.4 compatibility; 54% faster for 15+ commits |
 | 0.6.0 | 2025-11-17 | Distinguish blocked queued runs (🔁 icon); update legend & features |
 | 0.5.0 | 2025-11-04 | Add --no-cache flag to bypass success cache and force fresh API calls |

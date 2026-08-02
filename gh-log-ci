@@ -27,17 +27,17 @@ gh log-ci - show CI status next to recent commits
 Usage:
   gh log-ci [options] [<branch>|<commit-sha>]
 
- Options:
-   --branch <name>        Branch to inspect (alternative to positional <branch>)
-   --limit, -n <n>        Number of commits to display (default: 15; env LOG_CI_LIMIT overrides)
-   --concurrency, -c <n>  Max parallel API calls (default: 4; env LOG_CI_CONCURRENCY overrides)
-   --checks, -C           Show per-check run summaries beneath each commit (env LOG_CI_SHOW_CHECKS=1)
-   --no-spinner           Disable loading spinner (env LOG_CI_NO_SPINNER=1)
-   --api-timeout <secs>   Max seconds per API request (default: 30; env LOG_CI_API_TIMEOUT)
-   --watch                Continuously poll and update commit statuses
-   --watch-interval <s>   Seconds between polls in watch mode (default: 10; env LOG_CI_WATCH_INTERVAL)
-   --no-cache             Ignore success cache, force fresh API calls for all commits
-   --use-rest             Force REST API mode, bypass GraphQL (env LOG_CI_FORCE_REST=1)
+Options:
+  --branch <name>        Branch to inspect (alternative to positional <branch>)
+  --limit, -n <n>        Number of commits to display (default: 15; env LOG_CI_LIMIT overrides)
+  --concurrency, -c <n>  Max parallel API calls (default: 4; env LOG_CI_CONCURRENCY overrides)
+  --checks, -C           Show per-check run summaries beneath each commit (env LOG_CI_SHOW_CHECKS=1)
+  --no-spinner           Disable loading spinner (env LOG_CI_NO_SPINNER=1)
+  --api-timeout <secs>   Max seconds per API request (default: 30; env LOG_CI_API_TIMEOUT)
+  --watch                Continuously poll and update commit statuses
+  --watch-interval <s>   Seconds between polls in watch mode (default: 10; env LOG_CI_WATCH_INTERVAL)
+  --no-cache             Ignore success cache, force fresh API calls for all commits
+  --use-rest             Force REST API mode, bypass GraphQL (env LOG_CI_FORCE_REST=1)
 
 Branch auto-detect order when <branch> not supplied:
   1. GitHub default branch (via gh repo view)
