@@ -7,7 +7,10 @@
 
 ## Overview
 
-- **Single Bash script**: The entire functionality is in `gh-log-ci` (753 lines)
+- **Single Bash script**: The entire functionality is in `gh-log-ci`
+- **Bash 4.0+ required**: The script guards on `BASH_VERSINFO` at the top and exits with an
+  actionable error on older shells (notably macOS's default Bash 3.2). Associative arrays are
+  therefore fair game.
 - **GitHub API integration**: Uses GraphQL API v4 for batch queries (explicit REST API v3 mode via `--use-rest`)
 - **Caching system**: Success-only caching with TTL to reduce API calls
 - **Parallel processing**: Configurable concurrency for REST API mode
@@ -15,12 +18,12 @@
 
 ## API Strategy
 
-- **Primary: GraphQL batch query**: Single query fetches all commit check statuses (lines 221-290)
+- **Primary: GraphQL batch query**: Single query fetches all commit check statuses
   - Query structure: Repository → Ref → Target → History(limit) → CheckSuites(100) → CheckRuns(100)
   - Reduces API calls from N to 1 (93% reduction for 15 commits)
   - Transformation: GraphQL JSON → jq → TSV → existing aggregation logic
   - **When to use**: Default mode, optimal for GitHub.com and GitHub Enterprise Server ≥ 3.4
-- **REST API mode**: Per-commit API calls with concurrency control (lines 432-553)
+- **REST API mode**: Per-commit API calls with concurrency control
   - Manual override: `--use-rest` flag or `LOG_CI_FORCE_REST=1` environment variable
   - **When to use**:
     - GitHub Enterprise Server < 3.4 (GraphQL Checks API unavailable)
@@ -35,24 +38,29 @@
 
 ### Main Script (`gh-log-ci`)
 
-- **Argument parsing**: Lines 70-119 handle CLI flags and environment variables
-- **Commit SHA detection**: Lines 156-167 detect and validate commit SHAs
-- **Branch detection**: Lines 169-185 auto-detect branch using GitHub API and git fallbacks (skipped in commit mode)
-- **Remote URL parsing**: Lines 194-202 extract owner/repo from GitHub URLs
-- **GraphQL functions**: Lines 221-290 handle batch query, transformation, and grouping
+Grep for the function name to locate each piece — the script is a single file and line
+numbers go stale on every commit.
+
+- **Bash version guard**: `BASH_VERSINFO` check at the top of the file, before anything else runs
+- **Argument parsing**: Inline flag/env loop near the top, sets the `LOG_CI_*`-backed variables
+- **Commit SHA detection**: Sets `IS_COMMIT_MODE`, validating with `git rev-parse --verify`
+- **Branch detection**: Auto-detects via GitHub API with git fallbacks (skipped in commit mode)
+- **Remote URL parsing**: Extracts owner/repo from GitHub URLs
+- **GraphQL functions**:
   - `fetch_checks_graphql()`: Execute GraphQL batch query with timeout
   - `transform_graphql_response()`: Convert nested JSON to TSV format
-  - `group_by_sha()`: Extract check runs for specific commit SHA
-  - `fetch_checks_graphql_commit()`: Execute GraphQL query for single commit (lines 293-334)
-  - `transform_graphql_response_commit()`: Convert single commit JSON to TSV format (lines 336-348)
-- **Cache management**: Lines 310-323 read cache with TTL validation
-- **Main loop integration**: Lines 303-622 GraphQL or REST mode (controlled by --use-rest flag)
+  - `group_by_sha()`: Extract check runs for a specific commit SHA, using an associative array
+    built once from the TSV so lookups are O(1) rather than a subshell search per commit
+  - `fetch_checks_graphql_commit()`: Execute GraphQL query for a single commit
+  - `transform_graphql_response_commit()`: Convert single commit JSON to TSV format
+- **Cache management**: Reads cache with TTL validation
+- **Main loop integration**: GraphQL or REST mode (controlled by `--use-rest`)
 - **Status aggregation**: Shared logic reused for both GraphQL and REST responses
-- **Watch mode**: Lines 624-635 implement continuous polling
+- **Watch mode**: Continuous polling loop
 
 ### Caching System
 
-- **Success-only caching**: Only caches successful commits (line 336)
+- **Success-only caching**: Only caches successful commits
 - **Cache validation**: Requires all three conditions: `OVERALL_ICON=="✅"` AND `RAW_LINES!="__TIMEOUT__"` AND `pending_count==0`
 - **Pending check exclusion**: Commits with ANY pending check runs are never cached (prevents incorrect success icon display)
 - **TTL-based**: Configurable cache lifetime (default 24 hours)
@@ -61,7 +69,7 @@
 
 ### Commit SHA Mode
 
-- **SHA detection**: Lines 156-167 detect and validate commit SHAs
+- **SHA detection**: Validates with `git rev-parse --verify <sha>^{commit}`
 - **Single commit GraphQL**: `fetch_checks_graphql_commit()` and `transform_graphql_response_commit()` functions
 - **Conditional logic**: `IS_COMMIT_MODE` flag controls branch vs commit mode throughout script
 
@@ -77,11 +85,11 @@
 
 ## Implementation Details
 
-- Uses `git log` with custom format for commit display (line 196)
-- Implements timeout handling for API calls (lines 198-218)
-- Progress spinner shows completed/total count (lines 253-266)
-- Status aggregation logic prioritizes failures over pending over success (lines 318-326)
-- Watch mode clears screen between iterations (lines 367-368)
+- Uses `git log` with a custom tab-delimited format for commit display
+- Implements timeout handling for API calls
+- Progress spinner shows completed/total count
+- Status aggregation logic prioritizes failures over pending over success
+- Watch mode clears the screen between iterations
 - The script requires GitHub CLI (`gh`) to be installed and authenticated
 - All API calls go through `gh api` command
 - Cache files are named `{owner}_{repo}_success.cache`
