@@ -7,7 +7,8 @@
 
 ## Active Technologies
 
-- Bash (compatible with `/usr/bin/env bash`)
+- Bash 4.0 or newer (the script exits with an actionable error on older shells, including
+  macOS's default Bash 3.2 — install a current Bash with `brew install bash`)
 - `gh` CLI (GitHub CLI)
 - `git`
 - `jq` (JSON processor via gh)

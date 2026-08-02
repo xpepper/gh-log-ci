@@ -15,6 +15,7 @@
 - **graphql_batch.bats**: Tests GraphQL query construction, transformation, and fallback behavior
 - **commit_sha.bats**: Tests commit SHA detection, validation, and status display
 - **event_filter.bats**: Tests event-based filtering logic in jq transformations
+- **bash_version.bats**: Tests that the script fails with an actionable error on Bash < 4.0
 
 ## Environment Variables
 
@@ -28,3 +29,5 @@
 - `LOG_CI_CACHE_DIR`: Cache directory path
 - `LOG_CI_CACHE_DEBUG`: Enable cache debugging output
 - `LOG_CI_FORCE_REST`: Force REST API mode (default: 0, set to 1 to bypass GraphQL)
+- `LOG_CI_WATCH_ONCE`: Testing-only — run a single watch iteration then exit, so watch mode
+  can be asserted without an infinite loop
