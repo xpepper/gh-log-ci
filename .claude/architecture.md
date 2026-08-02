@@ -16,6 +16,17 @@
 - **Parallel processing**: Configurable concurrency for REST API mode
 - **Watch mode**: Continuous polling with configurable intervals
 
+## Constraints
+
+- **Single-script architecture**: The entire implementation stays in the one `gh-log-ci` script.
+  Do not extract features into separate files or libraries unless the single-file constraint
+  becomes demonstrably unmaintainable (>2000 lines with no clear organization). As a `gh`
+  extension, single-file distribution keeps `gh extension install` self-contained, with no
+  module loading or PATH complexity.
+- **Strict error propagation**: The script runs under `set -euo pipefail`.
+- **API failures** surface as the ⏲ icon rather than a crash or a false ✅.
+- **Cache failures** fall back to fresh API calls.
+
 ## API Strategy
 
 - **Primary: GraphQL batch query**: Single query fetches all commit check statuses

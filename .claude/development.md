@@ -40,6 +40,16 @@ make run
 - Always update the README and this file when adding features or changing behavior.
 - Don't forget to update the version in the script header when releasing a new version.
 
+## Versioning
+
+`VERSION` in the `gh-log-ci` header follows MAJOR.MINOR.PATCH:
+
+- **MAJOR**: breaking CLI changes (flag removals, output format changes)
+- **MINOR**: new features (new flags, new capabilities)
+- **PATCH**: bug fixes, performance improvements, other non-breaking changes
+
+Add a matching row to the README changelog in the same PR that bumps the version.
+
 ## CI/CD
 
 - GitHub Actions workflow in `.github/workflows/ci.yml`
